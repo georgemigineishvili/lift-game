@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Super Lift</title>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="/webapp/style_v2.css">
+</head>
+<body>
+<div class="container">
+    <!-- Загрузка -->
+    <div id="loading-screen" class="screen hidden">
+        <div class="loading-box">
+            <div class="loading-title">Super Lift</div>
+            <div id="loading-message" class="loading-message">Загрузка ассетов...</div>
+            <div class="loading-bar">
+                <div class="loading-bar-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Главное меню -->
+    <div id="menu-screen" class="screen">
+        <h1 class="game-title">Super Lift</h1>
+        <div class="menu-buttons">
+            <button id="menu-play-btn" class="primary-btn">Играть</button>
+            <button id="menu-dev-btn" class="secondary-btn">Dev режим</button>
+            <button id="menu-stats-btn" class="secondary-btn">Статистика</button>
+        </div>
+    </div>
+
+    <!-- Экран правил -->
+    <div id="rules-screen" class="screen hidden">
+        <h2 class="screen-title">Правила игры</h2>
+        <div class="rules-text">
+            <p>На героя падают тяжелые объекты.</p>
+            <p>Когда объект коснулся героя, быстро тапай по кругу и поднимай его вверх.</p>
+            <p>Каждый уровень — новый объект. Сейчас уровни сделаны легкими для теста.</p>
+            <p>Чем дольше идет подход, тем сильнее меняется эмоция героя.</p>
+        </div>
+        <button id="rules-continue-btn" class="primary-btn">Продолжить</button>
+    </div>
+
+    <!-- Экран игры -->
+    <div id="game-screen" class="screen hidden">
+        <div class="game-hud">
+            <h2 id="level-title" class="screen-title">Уровень 1</h2>
+            <div id="progress-text">0/0</div>
+        </div>
+
+        <div class="stage" id="stage">
+            <img id="level-object-img" class="sprite" alt="">
+            <img id="hero-body-img" class="sprite" alt="">
+            <img id="hero-head-img" class="sprite" alt="">
+        </div>
+
+        <button id="tap-btn">Поднимать!</button>
+        <button id="game-menu-btn" class="game-menu-btn" aria-label="Главное меню"></button>
+    </div>
+
+    <!-- Экран статистики (пока пустой) -->
+    <div id="stats-screen" class="screen hidden">
+        <h2 class="screen-title">Статистика</h2>
+        <div class="stats-user">Здесь позже может появиться зал славы.</div>
+        <div class="stats-list"></div>
+        <button id="stats-back-btn" class="secondary-btn full-width">Вернуться</button>
+    </div>
+
+    <!-- Dev режим -->
+    <div id="dev-screen" class="screen hidden">
+        <div class="game-hud">
+            <h2 class="screen-title">Dev режим</h2>
+            <button id="dev-back-btn" class="secondary-btn compact-btn">Меню</button>
+        </div>
+
+        <div class="stage dev-stage" id="dev-stage">
+            <img id="dev-object-img" class="sprite" alt="">
+            <img id="dev-body-img" class="sprite" alt="">
+            <img id="dev-head-img" class="sprite" alt="">
+        </div>
+
+        <div class="dev-panel">
+            <div class="dev-grid">
+                <label>Поза
+                    <select id="dev-pose-select"></select>
+                </label>
+                <label>Эмоция
+                    <select id="dev-emotion-select"></select>
+                </label>
+                <label>Предмет
+                    <select id="dev-level-select"></select>
+                </label>
+                <label>Двигать
+                    <select id="dev-target-select">
+                        <option value="body">Тело</option>
+                        <option value="head">Голова</option>
+                        <option value="object">Предмет</option>
+                    </select>
+                </label>
+                <label>Шаг
+                    <input id="dev-step-input" type="number" value="5" min="1" max="50">
+                </label>
+            </div>
+
+            <div class="dev-pad">
+                <button data-dev-action="up">Вверх</button>
+                <button data-dev-action="down">Вниз</button>
+                <button data-dev-action="left">Влево</button>
+                <button data-dev-action="right">Вправо</button>
+                <button data-dev-action="rotate-left">Поворот -</button>
+                <button data-dev-action="rotate-right">Поворот +</button>
+                <button data-dev-action="smaller">Размер -</button>
+                <button data-dev-action="bigger">Размер +</button>
+            </div>
+
+            <pre id="dev-values" class="dev-values"></pre>
+
+            <div class="dev-actions">
+                <button id="dev-save-btn" class="primary-btn">Сохранить</button>
+                <button id="dev-save-project-btn" class="primary-btn">Записать в проект</button>
+                <button id="dev-import-btn" class="secondary-btn">Импорт JSON</button>
+                <button id="dev-reset-btn" class="secondary-btn">Сбросить сохранение</button>
+            </div>
+            <textarea id="dev-export"></textarea>
+        </div>
+    </div>
+
+    <!-- Финал -->
+    <div id="final-screen" class="screen hidden">
+        <h2 class="screen-title">Все 8 уровней пройдены</h2>
+        <div class="final-text">Герой выдержал все падения. Финальную заставку можно будет заменить на отдельную сцену.</div>
+        <div class="menu-buttons">
+            <button id="final-retry-btn" class="primary-btn">Играть заново</button>
+            <button id="final-menu-btn" class="secondary-btn">Главное меню</button>
+        </div>
+    </div>
+
+    <!-- Оверлей поражения -->
+    <div id="lose-overlay" class="overlay hidden">
+        <div class="overlay-backdrop"></div>
+        <div class="overlay-panel">
+            <div id="lose-message" class="lose-message"></div>
+            <button id="lose-retry-btn" class="primary-btn full-width">Начать заново</button>
+            <button id="lose-menu-btn" class="secondary-btn full-width">Главное меню</button>
+        </div>
+    </div>
+
+</div>
+
+<script src="/webapp/dev_config.js"></script>
+<script src="/webapp/main.js"></script>
+</body>
+</html>
