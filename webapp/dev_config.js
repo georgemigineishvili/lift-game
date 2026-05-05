@@ -14,6 +14,11 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
     "distance": 0.5,
     "speed": 10
   },
+  "devFloat": {
+    "enabled": true,
+    "distance": 6,
+    "speed": 0.55
+  },
   "poses": {
     "0": {
       "body": {

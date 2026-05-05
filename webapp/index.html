@@ -212,6 +212,18 @@
                     <button data-dev-demo-action="shake-on">Включить дрожание</button>
                     <button data-dev-demo-action="shake-off">Выключить дрожание</button>
                 </div>
+                <div class="dev-grid">
+                    <label>Парение, px
+                        <input id="dev-float-distance" type="number" value="6" min="0" max="30" step="0.5">
+                    </label>
+                    <label>Парение, скорость
+                        <input id="dev-float-speed" type="number" value="0.55" min="0.1" max="3" step="0.05">
+                    </label>
+                </div>
+                <div class="dev-pad">
+                    <button data-dev-demo-action="float-on">Включить парение</button>
+                    <button data-dev-demo-action="float-off">Выключить парение</button>
+                </div>
             </div>
 
             <pre id="dev-values" class="dev-values"></pre>

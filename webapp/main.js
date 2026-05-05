@@ -31,6 +31,11 @@ const GAME_CONFIG = {
         distance: 1.6,
         speed: 13,
     },
+    devFloat: {
+        enabled: true,
+        distance: 6,
+        speed: 0.55,
+    },
     stage: {
         width: 390,
         height: 520,
@@ -254,6 +259,8 @@ const devDemoTapBtn = document.getElementById("dev-demo-tap-btn");
 const devZoomToCatchBtn = document.getElementById("dev-zoom-to-catch-btn");
 const devShakeDistanceInput = document.getElementById("dev-shake-distance");
 const devShakeSpeedInput = document.getElementById("dev-shake-speed");
+const devFloatDistanceInput = document.getElementById("dev-float-distance");
+const devFloatSpeedInput = document.getElementById("dev-float-speed");
 
 let devInitialized = false;
 let devModeTab = "fit";
@@ -265,6 +272,8 @@ let devDemoTimerId = null;
 let devDemoStartedAt = 0;
 let devShakeAnimationId = 0;
 let devShakeFrameId = null;
+let devFloatAnimationId = 0;
+let devFloatFrameId = null;
 let devCameraScale = 1;
 
 function showScreen(screen) {
@@ -322,6 +331,7 @@ function getSerializableDevConfig() {
     return {
         devView: GAME_CONFIG.devView,
         devShake: GAME_CONFIG.devShake,
+        devFloat: GAME_CONFIG.devFloat,
         poses: GAME_CONFIG.poses,
         levels: GAME_CONFIG.levels,
     };
@@ -647,6 +657,18 @@ function initDevMode() {
         });
     });
 
+    [devFloatDistanceInput, devFloatSpeedInput].forEach((el) => {
+        el.addEventListener("change", () => {
+            updateDevFloatSettingsFromInputs();
+            if (devModeTab === "demo" && devDemoState === "complete") {
+                startDevFloat();
+                devValuesEl.textContent = `${devValuesEl.textContent}\n\nПарение обновлено: ${GAME_CONFIG.devFloat.distance}px, speed ${GAME_CONFIG.devFloat.speed}.`;
+                return;
+            }
+            renderDevMode();
+        });
+    });
+
     document.querySelectorAll("[data-dev-action]").forEach((button) => {
         button.addEventListener("click", () => {
             adjustDevTarget(button.dataset.devAction);
@@ -714,6 +736,7 @@ function setDevModeTab(tab) {
     activeDevIntroAnimationId += 1;
     stopDevDemoTimer();
     stopDevShake();
+    stopDevFloat();
     resetDevCamera();
     updateDevVignette(1);
     devDemoState = "idle";
@@ -844,6 +867,16 @@ function syncDevShakeInputs() {
 function updateDevShakeSettingsFromInputs() {
     GAME_CONFIG.devShake.distance = Math.max(0, Number(devShakeDistanceInput.value) || 0);
     GAME_CONFIG.devShake.speed = Math.max(1, Number(devShakeSpeedInput.value) || 1);
+}
+
+function syncDevFloatInputs() {
+    devFloatDistanceInput.value = String(GAME_CONFIG.devFloat.distance);
+    devFloatSpeedInput.value = String(GAME_CONFIG.devFloat.speed);
+}
+
+function updateDevFloatSettingsFromInputs() {
+    GAME_CONFIG.devFloat.distance = Math.max(0, Number(devFloatDistanceInput.value) || 0);
+    GAME_CONFIG.devFloat.speed = Math.max(0.1, Number(devFloatSpeedInput.value) || 0.1);
 }
 
 function applyDevCamera(scale, x, y) {
@@ -1006,6 +1039,7 @@ function renderDevDemoMode(message = "") {
 
     syncDevIntroInputs(level);
     syncDevShakeInputs();
+    syncDevFloatInputs();
     resetDevCamera();
     updateDevVignette(devDemoState === "idle" ? 1 : devDemoTaps / level.tapsRequired);
     setDevStageResult(null);
@@ -1034,6 +1068,7 @@ function renderDevDemoMode(message = "") {
         `taps: ${devDemoTaps}/${level.tapsRequired}`,
         `pose: ${pose}`,
         `shake: ${GAME_CONFIG.devShake.enabled ? "on" : "off"}, ${GAME_CONFIG.devShake.distance}px, speed ${GAME_CONFIG.devShake.speed}`,
+        `float: ${GAME_CONFIG.devFloat.enabled ? "on" : "off"}, ${GAME_CONFIG.devFloat.distance}px, speed ${GAME_CONFIG.devFloat.speed}`,
         "После старта проиграется падение, зум и затем кнопка станет тапабельной.",
         message,
     ].filter(Boolean).join("\n");
@@ -1317,6 +1352,52 @@ function startDevShake() {
     devShakeFrameId = requestAnimationFrame(tick);
 }
 
+function stopDevFloat() {
+    devFloatAnimationId += 1;
+    if (devFloatFrameId) cancelAnimationFrame(devFloatFrameId);
+    devFloatFrameId = null;
+}
+
+function startDevFloat() {
+    stopDevFloat();
+    if (!GAME_CONFIG.devFloat.enabled || devDemoState !== "complete") return;
+
+    const level = currentDevLevel();
+    const pose = "4";
+    const poseSettings = GAME_CONFIG.poses[pose];
+    const objectSettings = getObjectPoseSettings(level, pose);
+    const animationId = devFloatAnimationId;
+    const startedAt = performance.now();
+
+    function tick(now) {
+        if (animationId !== devFloatAnimationId || devDemoState !== "complete") return;
+
+        const wave = Math.sin(((now - startedAt) / 1000) * GAME_CONFIG.devFloat.speed * Math.PI * 2);
+        const offset = wave * GAME_CONFIG.devFloat.distance;
+
+        applyImageTransform(devBodyImg, {
+            ...poseSettings.body,
+            y: poseSettings.body.y + offset,
+        });
+
+        if (poseSettings.head) {
+            applyImageTransform(devHeadImg, {
+                ...poseSettings.head,
+                y: poseSettings.head.y + offset,
+            });
+        }
+
+        applyImageTransform(devObjectImg, {
+            ...objectSettings,
+            y: objectSettings.y + offset,
+        });
+
+        devFloatFrameId = requestAnimationFrame(tick);
+    }
+
+    devFloatFrameId = requestAnimationFrame(tick);
+}
+
 function setDevDemoButton(text, enabled, pulsing) {
     devDemoTapBtn.disabled = !enabled;
     devDemoTapBtn.textContent = text;
@@ -1369,7 +1450,9 @@ function startDevDemoTimer() {
 function startDevDemo() {
     stopDevDemoTimer();
     stopDevShake();
+    stopDevFloat();
     updateDevShakeSettingsFromInputs();
+    updateDevFloatSettingsFromInputs();
     const level = currentDevLevel();
     setDevStageResult(null);
     devDemoState = "intro";
@@ -1406,6 +1489,7 @@ function resetDevDemo() {
     activeDevIntroAnimationId += 1;
     stopDevDemoTimer();
     stopDevShake();
+    stopDevFloat();
     devDemoState = "idle";
     devDemoTaps = 0;
     devDemoLiftPose = null;
@@ -1441,6 +1525,26 @@ function handleDevDemoAction(action) {
             applyDevHeroPose(devDemoLiftPose, devDemoHeadIndexByTime());
         }
         devValuesEl.textContent = `${devValuesEl.textContent}\n\nДрожание выключено.`;
+        return;
+    }
+
+    if (action === "float-on") {
+        updateDevFloatSettingsFromInputs();
+        GAME_CONFIG.devFloat.enabled = true;
+        startDevFloat();
+        devValuesEl.textContent = `${devValuesEl.textContent}\n\nПарение включено: ${GAME_CONFIG.devFloat.distance}px, speed ${GAME_CONFIG.devFloat.speed}.`;
+        return;
+    }
+
+    if (action === "float-off") {
+        GAME_CONFIG.devFloat.enabled = false;
+        stopDevFloat();
+        if (devDemoState === "complete") {
+            const level = currentDevLevel();
+            applyDevHeroPose("4", GAME_CONFIG.heads.length - 1);
+            applyDevObjectPose(level, "4");
+        }
+        devValuesEl.textContent = `${devValuesEl.textContent}\n\nПарение выключено.`;
     }
 }
 
@@ -1487,12 +1591,14 @@ function handleDevDemoTap() {
     if (progress >= 1) {
         stopDevDemoTimer();
         stopDevShake();
+        stopDevFloat();
         devDemoState = "complete";
         updateDevVignette(1);
         setDevStageResult("win");
         applyDevHeroPose("4", GAME_CONFIG.heads.length - 1);
         applyDevObjectPose(level, "4");
         animateDevCameraTo(1, 220);
+        startDevFloat();
         setDevDemoButton("Победа", false, false);
         devValuesEl.textContent = [
             "mode: демо уровня",
@@ -1511,6 +1617,7 @@ function failDevDemo() {
     const level = currentDevLevel();
     stopDevDemoTimer();
     stopDevShake();
+    stopDevFloat();
     devDemoState = "failed";
     updateDevVignette(1);
     setDevStageResult("lose");
