@@ -1,4 +1,14 @@
 window.SUPER_LIFT_PROJECT_CONFIG = {
+  "devView": {
+    "backgroundSrc": "../assets/places/place-city.PNG",
+    "showBackground": true,
+    "showGrid": false,
+    "x": 195,
+    "y": 230,
+    "width": 390,
+    "rotation": 0,
+    "zIndex": 0
+  },
   "poses": {
     "0": {
       "body": {
@@ -176,6 +186,16 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
           "rotation": 5,
           "zIndex": 10
         }
+      },
+      "intro": {
+        "fallMs": 420,
+        "poseSwitchDelayMs": 0,
+        "startSignalDelayMs": 180,
+        "zoomScale": 1.22,
+        "zoomMs": 240,
+        "zoomDelayMs": 0,
+        "zoomX": 195,
+        "zoomY": 255
       }
     },
     {
@@ -300,6 +320,16 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
           "rotation": 193,
           "zIndex": 10
         }
+      },
+      "intro": {
+        "fallMs": 390,
+        "poseSwitchDelayMs": 0,
+        "startSignalDelayMs": 180,
+        "zoomScale": 1.22,
+        "zoomMs": 240,
+        "zoomDelayMs": 0,
+        "zoomX": 195,
+        "zoomY": 255
       }
     },
     {
@@ -362,6 +392,16 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
           "rotation": 4,
           "zIndex": 10
         }
+      },
+      "intro": {
+        "fallMs": 390,
+        "poseSwitchDelayMs": 0,
+        "startSignalDelayMs": 180,
+        "zoomScale": 1.22,
+        "zoomMs": 240,
+        "zoomDelayMs": 0,
+        "zoomX": 195,
+        "zoomY": 255
       }
     },
     {
@@ -383,47 +423,57 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
       },
       "objectByPose": {
         "0": {
-          "x": 195,
+          "x": 188,
           "y": -42,
-          "rotation": 0,
+          "rotation": 170,
           "zIndex": 30
         },
         "1": {
-          "x": 195,
-          "y": 112,
-          "rotation": -2,
+          "x": 191,
+          "y": 138,
+          "rotation": 174,
           "zIndex": 30
         },
         "2": {
-          "x": 195,
-          "y": 90,
-          "rotation": -1,
+          "x": 193,
+          "y": 116,
+          "rotation": 177,
           "zIndex": 30
         },
         "3": {
-          "x": 195,
-          "y": 57,
-          "rotation": 2,
+          "x": 209,
+          "y": 81,
+          "rotation": 184,
           "zIndex": 30
         },
         "4": {
-          "x": 193,
-          "y": 46,
-          "rotation": -3,
+          "x": 214,
+          "y": 68,
+          "rotation": 183,
           "zIndex": 30
         },
         "0.5": {
-          "x": 209,
-          "y": 124,
-          "rotation": 5,
+          "x": 199,
+          "y": 152,
+          "rotation": 175,
           "zIndex": 30
         },
         "dead": {
-          "x": 195,
-          "y": 203,
-          "rotation": 1,
+          "x": 182,
+          "y": 234,
+          "rotation": 163,
           "zIndex": 10
         }
+      },
+      "intro": {
+        "fallMs": 370,
+        "poseSwitchDelayMs": 0,
+        "startSignalDelayMs": 180,
+        "zoomScale": 1.22,
+        "zoomMs": 240,
+        "zoomDelayMs": 0,
+        "zoomX": 195,
+        "zoomY": 255
       }
     },
     {
@@ -486,6 +536,16 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
           "rotation": 4,
           "zIndex": 10
         }
+      },
+      "intro": {
+        "fallMs": 360,
+        "poseSwitchDelayMs": 0,
+        "startSignalDelayMs": 180,
+        "zoomScale": 1.22,
+        "zoomMs": 240,
+        "zoomDelayMs": 0,
+        "zoomX": 195,
+        "zoomY": 255
       }
     },
     {
@@ -548,6 +608,16 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
           "rotation": -2,
           "zIndex": 10
         }
+      },
+      "intro": {
+        "fallMs": 350,
+        "poseSwitchDelayMs": 0,
+        "startSignalDelayMs": 180,
+        "zoomScale": 1.22,
+        "zoomMs": 240,
+        "zoomDelayMs": 0,
+        "zoomX": 195,
+        "zoomY": 255
       }
     },
     {
@@ -610,6 +680,16 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
           "rotation": -9,
           "zIndex": 10
         }
+      },
+      "intro": {
+        "fallMs": 330,
+        "poseSwitchDelayMs": 0,
+        "startSignalDelayMs": 180,
+        "zoomScale": 1.22,
+        "zoomMs": 240,
+        "zoomDelayMs": 0,
+        "zoomX": 195,
+        "zoomY": 255
       }
     }
   ]

@@ -74,44 +74,117 @@
             <button id="dev-back-btn" class="secondary-btn compact-btn">Меню</button>
         </div>
 
+        <div class="dev-tabs">
+            <button id="dev-fit-tab-btn" class="dev-tab active" type="button">Подгонка</button>
+            <button id="dev-intro-tab-btn" class="dev-tab" type="button">Старт уровня</button>
+            <button id="dev-demo-tab-btn" class="dev-tab" type="button">Демо</button>
+        </div>
+
         <div class="stage dev-stage" id="dev-stage">
-            <img id="dev-object-img" class="sprite" alt="">
-            <img id="dev-body-img" class="sprite" alt="">
-            <img id="dev-head-img" class="sprite" alt="">
+            <div id="dev-camera-layer" class="stage-camera-layer">
+                <img id="dev-background-img" class="dev-background-img" alt="">
+                <img id="dev-object-img" class="sprite" alt="">
+                <img id="dev-body-img" class="sprite" alt="">
+                <img id="dev-head-img" class="sprite" alt="">
+            </div>
         </div>
 
         <div class="dev-panel">
-            <div class="dev-grid">
-                <label>Поза
+            <div class="dev-view-controls">
+                <button id="dev-bg-toggle-btn" class="secondary-btn" type="button">Фон: вкл</button>
+                <button id="dev-grid-toggle-btn" class="secondary-btn" type="button">Сетка: вкл</button>
+            </div>
+
+            <div class="dev-grid dev-main-fields">
+                <label class="dev-fit-field">
+                    Поза
                     <select id="dev-pose-select"></select>
                 </label>
-                <label>Эмоция
+                <label class="dev-fit-field">
+                    Эмоция
                     <select id="dev-emotion-select"></select>
                 </label>
-                <label>Предмет
+                <label class="dev-level-field">
+                    <span class="dev-level-label">Предмет</span>
                     <select id="dev-level-select"></select>
                 </label>
-                <label>Двигать
+                <label class="dev-fit-field">
+                    Двигать
                     <select id="dev-target-select">
                         <option value="body">Тело</option>
                         <option value="head">Голова</option>
                         <option value="object">Предмет</option>
+                        <option value="background">Фон</option>
                     </select>
                 </label>
-                <label>Шаг
+                <label class="dev-fit-field">
+                    Шаг
                     <input id="dev-step-input" type="number" value="5" min="1" max="50">
                 </label>
             </div>
 
-            <div class="dev-pad">
-                <button data-dev-action="up">Вверх</button>
-                <button data-dev-action="down">Вниз</button>
-                <button data-dev-action="left">Влево</button>
-                <button data-dev-action="right">Вправо</button>
-                <button data-dev-action="rotate-left">Поворот -</button>
-                <button data-dev-action="rotate-right">Поворот +</button>
-                <button data-dev-action="smaller">Размер -</button>
-                <button data-dev-action="bigger">Размер +</button>
+            <div id="dev-fit-controls">
+                <div class="dev-pad">
+                    <button data-dev-action="up">Вверх</button>
+                    <button data-dev-action="down">Вниз</button>
+                    <button data-dev-action="left">Влево</button>
+                    <button data-dev-action="right">Вправо</button>
+                    <button data-dev-action="rotate-left">Поворот -</button>
+                    <button data-dev-action="rotate-right">Поворот +</button>
+                    <button data-dev-action="smaller">Размер -</button>
+                    <button data-dev-action="bigger">Размер +</button>
+                </div>
+            </div>
+
+            <div id="dev-intro-controls" class="dev-intro-controls hidden">
+                <div class="dev-pad">
+                    <button data-dev-intro-action="play">Проиграть</button>
+                    <button data-dev-intro-action="reset">Сбросить вид</button>
+                    <button data-dev-intro-action="stop-up">Стоп вверх</button>
+                    <button data-dev-intro-action="stop-down">Стоп вниз</button>
+                    <button data-dev-intro-action="stop-left">Стоп влево</button>
+                    <button data-dev-intro-action="stop-right">Стоп вправо</button>
+                    <button data-dev-intro-action="stop-rotate-left">Стоп поворот -</button>
+                    <button data-dev-intro-action="stop-rotate-right">Стоп поворот +</button>
+                </div>
+                <button id="dev-intro-signal" class="dev-intro-signal" type="button">Стартовая кнопка</button>
+                <div class="dev-grid">
+                    <label>Падение, мс
+                        <input id="dev-intro-fall-ms" type="number" value="420" min="80" max="3000">
+                    </label>
+                    <label>Смена позы, мс
+                        <input id="dev-intro-pose-delay-ms" type="number" value="0" min="0" max="2000">
+                    </label>
+                    <label>Старт игры, мс
+                        <input id="dev-intro-start-delay-ms" type="number" value="180" min="0" max="2000">
+                    </label>
+                    <label>Стоп: шаг
+                        <input id="dev-intro-stop-step" type="number" value="5" min="1" max="50">
+                    </label>
+                    <label>Зум
+                        <input id="dev-intro-zoom-scale" type="number" value="1.22" min="1" max="2.5" step="0.01">
+                    </label>
+                    <label>Зум, мс
+                        <input id="dev-intro-zoom-ms" type="number" value="240" min="0" max="2000">
+                    </label>
+                    <label>Зум задержка, мс
+                        <input id="dev-intro-zoom-delay-ms" type="number" value="0" min="0" max="2000">
+                    </label>
+                    <label>Фокус X
+                        <input id="dev-intro-zoom-x" type="number" value="195" min="-200" max="600">
+                    </label>
+                    <label>Фокус Y
+                        <input id="dev-intro-zoom-y" type="number" value="255" min="-200" max="800">
+                    </label>
+                </div>
+            </div>
+
+            <div id="dev-demo-controls" class="dev-demo-controls hidden">
+                <div class="dev-pad">
+                    <button data-dev-demo-action="start">Запустить демо</button>
+                    <button data-dev-demo-action="reset">Сбросить демо</button>
+                </div>
+                <button id="dev-demo-tap-btn" class="dev-intro-signal" type="button" disabled>Запусти демо</button>
             </div>
 
             <pre id="dev-values" class="dev-values"></pre>

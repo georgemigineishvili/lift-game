@@ -272,36 +272,165 @@ button:disabled {
 .dev-stage {
     height: min(54vh, 460px);
     min-height: 360px;
+    background: #1f1f21;
+    --dev-vignette-opacity: 0;
+    --dev-vignette-blur: 0px;
+    --dev-vignette-spread: 0px;
+    --dev-result-opacity: 0;
+    --dev-result-color: 34, 197, 94;
+}
+
+.dev-stage::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 80;
+    pointer-events: none;
+    box-shadow:
+        inset 0 0 var(--dev-vignette-blur) var(--dev-vignette-spread) rgba(0, 0, 0, var(--dev-vignette-opacity)),
+        inset 34px 0 58px rgba(var(--dev-result-color), var(--dev-result-opacity)),
+        inset -34px 0 58px rgba(var(--dev-result-color), var(--dev-result-opacity)),
+        inset 0 28px 48px rgba(var(--dev-result-color), calc(var(--dev-result-opacity) * 0.7)),
+        inset 0 -28px 48px rgba(var(--dev-result-color), calc(var(--dev-result-opacity) * 0.7));
+}
+
+.dev-stage.dev-vignette-pulse::before {
+    animation: dev-black-vignette-pulse 0.14s ease-out;
+}
+
+.dev-stage.stage-win {
+    --dev-result-color: 34, 197, 94;
+    --dev-result-opacity: 0.44;
+    box-shadow:
+        inset 28px 0 44px rgba(34, 197, 94, 0.26),
+        inset -28px 0 44px rgba(34, 197, 94, 0.26),
+        inset 0 22px 36px rgba(34, 197, 94, 0.18),
+        inset 0 -22px 36px rgba(34, 197, 94, 0.18);
+}
+
+.dev-stage.stage-lose {
+    --dev-result-color: 239, 68, 68;
+    --dev-result-opacity: 0.52;
+    filter: brightness(0.78);
+    box-shadow:
+        inset 30px 0 52px rgba(239, 68, 68, 0.34),
+        inset -30px 0 52px rgba(239, 68, 68, 0.34),
+        inset 0 24px 42px rgba(239, 68, 68, 0.22),
+        inset 0 -24px 42px rgba(239, 68, 68, 0.22);
+}
+
+@keyframes dev-black-vignette-pulse {
+    from {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.42;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.dev-stage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 90;
+    opacity: 0.45;
+    pointer-events: none;
     background:
-        linear-gradient(rgba(250, 204, 21, 0.45), rgba(250, 204, 21, 0.45)) center / 1px 100% no-repeat,
-        linear-gradient(90deg, rgba(250, 204, 21, 0.45), rgba(250, 204, 21, 0.45)) center / 100% 1px no-repeat,
-        linear-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.14) 1px, transparent 1px),
-        linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-        #1f1f21;
+        linear-gradient(rgba(250, 204, 21, 0.34), rgba(250, 204, 21, 0.34)) center / 1px 100% no-repeat,
+        linear-gradient(90deg, rgba(250, 204, 21, 0.34), rgba(250, 204, 21, 0.34)) center / 100% 1px no-repeat,
+        linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
     background-size:
         1px 100%,
         100% 1px,
         50px 50px,
         50px 50px,
         10px 10px,
-        10px 10px,
-        auto;
+        10px 10px;
     background-position:
         center,
         center,
         0 0,
         0 0,
         0 0,
-        0 0,
         0 0;
+}
+
+.dev-stage.no-grid::after {
+    display: none;
+}
+
+.stage-camera-layer {
+    position: absolute;
+    inset: 0;
+    transform-origin: center center;
+    will-change: transform;
+}
+
+.dev-background-img {
+    position: absolute;
+    z-index: 0;
+    display: block;
+    height: auto;
+    transform-origin: center center;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.dev-stage.no-background .dev-background-img {
+    display: none;
 }
 
 .dev-panel {
     display: grid;
     gap: 10px;
     padding-bottom: 20px;
+}
+
+.dev-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.dev-tab {
+    min-height: 40px;
+    border: 1px solid #3f3f46;
+    border-radius: 6px;
+    background: #27272a;
+    color: #d1d5db;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.dev-tab.active {
+    border-color: #facc15;
+    background: #3a3218;
+    color: #facc15;
+}
+
+.dev-view-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.dev-view-controls button {
+    min-height: 38px;
+}
+
+.dev-demo-active .dev-main-fields {
+    grid-template-columns: 1fr;
+}
+
+.dev-demo-active .dev-fit-field {
+    display: none;
 }
 
 .dev-grid {
@@ -344,6 +473,68 @@ button:disabled {
     padding: 8px 6px;
     font-size: 12px;
     font-weight: 800;
+}
+
+.dev-intro-controls {
+    display: grid;
+    gap: 10px;
+}
+
+.dev-demo-controls {
+    display: grid;
+    gap: 10px;
+}
+
+.dev-intro-controls.hidden,
+.dev-demo-controls.hidden {
+    display: none;
+}
+
+.dev-intro-signal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 132px;
+    height: 132px;
+    margin: 2px auto 0;
+    border: 0;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #f9fafb;
+    font-size: 18px;
+    font-weight: 900;
+    text-align: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.dev-intro-signal.pulsing {
+    animation: tap-pulse 0.6s ease-in-out infinite alternate;
+    background: #facc15;
+    color: #1d1d1f;
+}
+
+.dev-intro-signal.tap-btn-win {
+    background: #facc15;
+    color: #1d1d1f;
+}
+
+.dev-intro-signal.tap-btn-lose {
+    background: #ef4444;
+    color: #f9fafb;
+}
+
+@keyframes tap-pulse {
+    from {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(250, 204, 21, 0);
+    }
+    to {
+        transform: scale(1.07);
+        box-shadow: 0 0 28px rgba(250, 204, 21, 0.38);
+    }
 }
 
 .dev-values {
