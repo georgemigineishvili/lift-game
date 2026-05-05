@@ -9,6 +9,11 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
     "rotation": 0,
     "zIndex": 0
   },
+  "devShake": {
+    "enabled": true,
+    "distance": 0.5,
+    "speed": 10
+  },
   "poses": {
     "0": {
       "body": {
@@ -192,10 +197,12 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         "poseSwitchDelayMs": 0,
         "startSignalDelayMs": 180,
         "zoomScale": 1.22,
-        "zoomMs": 240,
+        "zoomMs": 89,
         "zoomDelayMs": 0,
         "zoomX": 195,
-        "zoomY": 255
+        "zoomY": 255,
+        "poseLeadMs": 100,
+        "zoomStart": "visible"
       }
     },
     {
@@ -258,6 +265,18 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
           "rotation": 2,
           "zIndex": 10
         }
+      },
+      "intro": {
+        "fallMs": 420,
+        "poseSwitchDelayMs": 0,
+        "poseLeadMs": 100,
+        "startSignalDelayMs": 180,
+        "zoomScale": 1.22,
+        "zoomMs": 89,
+        "zoomDelayMs": 0,
+        "zoomX": 195,
+        "zoomY": 255,
+        "zoomStart": "visible"
       }
     },
     {
@@ -326,10 +345,12 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         "poseSwitchDelayMs": 0,
         "startSignalDelayMs": 180,
         "zoomScale": 1.22,
-        "zoomMs": 240,
+        "zoomMs": 80,
         "zoomDelayMs": 0,
         "zoomX": 195,
-        "zoomY": 255
+        "zoomY": 255,
+        "poseLeadMs": 100,
+        "zoomStart": "visible"
       }
     },
     {
@@ -398,10 +419,12 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         "poseSwitchDelayMs": 0,
         "startSignalDelayMs": 180,
         "zoomScale": 1.22,
-        "zoomMs": 240,
+        "zoomMs": 80,
         "zoomDelayMs": 0,
         "zoomX": 195,
-        "zoomY": 255
+        "zoomY": 255,
+        "poseLeadMs": 100,
+        "zoomStart": "visible"
       }
     },
     {
@@ -470,10 +493,12 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         "poseSwitchDelayMs": 0,
         "startSignalDelayMs": 180,
         "zoomScale": 1.22,
-        "zoomMs": 240,
+        "zoomMs": 80,
         "zoomDelayMs": 0,
         "zoomX": 195,
-        "zoomY": 255
+        "zoomY": 255,
+        "poseLeadMs": 100,
+        "zoomStart": "visible"
       }
     },
     {
@@ -542,10 +567,12 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         "poseSwitchDelayMs": 0,
         "startSignalDelayMs": 180,
         "zoomScale": 1.22,
-        "zoomMs": 240,
+        "zoomMs": 80,
         "zoomDelayMs": 0,
         "zoomX": 195,
-        "zoomY": 255
+        "zoomY": 255,
+        "poseLeadMs": 100,
+        "zoomStart": "visible"
       }
     },
     {
@@ -614,10 +641,12 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         "poseSwitchDelayMs": 0,
         "startSignalDelayMs": 180,
         "zoomScale": 1.22,
-        "zoomMs": 240,
+        "zoomMs": 80,
         "zoomDelayMs": 0,
         "zoomX": 195,
-        "zoomY": 255
+        "zoomY": 255,
+        "poseLeadMs": 100,
+        "zoomStart": "visible"
       }
     },
     {
@@ -686,10 +715,12 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         "poseSwitchDelayMs": 0,
         "startSignalDelayMs": 180,
         "zoomScale": 1.22,
-        "zoomMs": 240,
+        "zoomMs": 80,
         "zoomDelayMs": 0,
         "zoomX": 195,
-        "zoomY": 255
+        "zoomY": 255,
+        "poseLeadMs": 100,
+        "zoomStart": "visible"
       }
     }
   ]

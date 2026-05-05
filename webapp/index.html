@@ -74,10 +74,14 @@
             <button id="dev-back-btn" class="secondary-btn compact-btn">Меню</button>
         </div>
 
-        <div class="dev-tabs">
-            <button id="dev-fit-tab-btn" class="dev-tab active" type="button">Подгонка</button>
-            <button id="dev-intro-tab-btn" class="dev-tab" type="button">Старт уровня</button>
-            <button id="dev-demo-tab-btn" class="dev-tab" type="button">Демо</button>
+        <div class="dev-mode-switch">
+            <label>Режим
+                <select id="dev-mode-select">
+                    <option value="fit">Подгонка</option>
+                    <option value="intro">Старт уровня</option>
+                    <option value="demo">Демо</option>
+                </select>
+            </label>
         </div>
 
         <div class="stage dev-stage" id="dev-stage">
@@ -146,6 +150,7 @@
                     <button data-dev-intro-action="stop-right">Стоп вправо</button>
                     <button data-dev-intro-action="stop-rotate-left">Стоп поворот -</button>
                     <button data-dev-intro-action="stop-rotate-right">Стоп поворот +</button>
+                    <button id="dev-zoom-to-catch-btn" data-dev-intro-action="zoom-to-catch">Зум = подхвату</button>
                 </div>
                 <button id="dev-intro-signal" class="dev-intro-signal" type="button">Стартовая кнопка</button>
                 <div class="dev-grid">
@@ -154,6 +159,9 @@
                     </label>
                     <label>Смена позы, мс
                         <input id="dev-intro-pose-delay-ms" type="number" value="0" min="0" max="2000">
+                    </label>
+                    <label>Поза раньше, мс
+                        <input id="dev-intro-pose-lead-ms" type="number" value="70" min="0" max="500">
                     </label>
                     <label>Старт игры, мс
                         <input id="dev-intro-start-delay-ms" type="number" value="180" min="0" max="2000">
@@ -170,6 +178,13 @@
                     <label>Зум задержка, мс
                         <input id="dev-intro-zoom-delay-ms" type="number" value="0" min="0" max="2000">
                     </label>
+                    <label>Старт зума
+                        <select id="dev-intro-zoom-start">
+                            <option value="contact">На позе 0.5</option>
+                            <option value="fall">С начала падения</option>
+                            <option value="visible">С появления предмета</option>
+                        </select>
+                    </label>
                     <label>Фокус X
                         <input id="dev-intro-zoom-x" type="number" value="195" min="-200" max="600">
                     </label>
@@ -185,6 +200,18 @@
                     <button data-dev-demo-action="reset">Сбросить демо</button>
                 </div>
                 <button id="dev-demo-tap-btn" class="dev-intro-signal" type="button" disabled>Запусти демо</button>
+                <div class="dev-grid">
+                    <label>Дрожание, px
+                        <input id="dev-shake-distance" type="number" value="1.6" min="0" max="12" step="0.1">
+                    </label>
+                    <label>Дрожание, скорость
+                        <input id="dev-shake-speed" type="number" value="13" min="1" max="40" step="0.5">
+                    </label>
+                </div>
+                <div class="dev-pad">
+                    <button data-dev-demo-action="shake-on">Включить дрожание</button>
+                    <button data-dev-demo-action="shake-off">Выключить дрожание</button>
+                </div>
             </div>
 
             <pre id="dev-values" class="dev-values"></pre>

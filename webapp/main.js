@@ -26,6 +26,11 @@ const GAME_CONFIG = {
         rotation: 0,
         zIndex: 0,
     },
+    devShake: {
+        enabled: true,
+        distance: 1.6,
+        speed: 13,
+    },
     stage: {
         width: 390,
         height: 520,
@@ -226,9 +231,7 @@ const devSaveProjectBtn = document.getElementById("dev-save-project-btn");
 const devImportBtn = document.getElementById("dev-import-btn");
 const devResetBtn = document.getElementById("dev-reset-btn");
 const devExportEl = document.getElementById("dev-export");
-const devFitTabBtn = document.getElementById("dev-fit-tab-btn");
-const devIntroTabBtn = document.getElementById("dev-intro-tab-btn");
-const devDemoTabBtn = document.getElementById("dev-demo-tab-btn");
+const devModeSelect = document.getElementById("dev-mode-select");
 const devBgToggleBtn = document.getElementById("dev-bg-toggle-btn");
 const devGridToggleBtn = document.getElementById("dev-grid-toggle-btn");
 const devFitControls = document.getElementById("dev-fit-controls");
@@ -237,15 +240,20 @@ const devDemoControls = document.getElementById("dev-demo-controls");
 const devCameraLayer = document.getElementById("dev-camera-layer");
 const devIntroFallMsInput = document.getElementById("dev-intro-fall-ms");
 const devIntroPoseDelayMsInput = document.getElementById("dev-intro-pose-delay-ms");
+const devIntroPoseLeadMsInput = document.getElementById("dev-intro-pose-lead-ms");
 const devIntroStartDelayMsInput = document.getElementById("dev-intro-start-delay-ms");
 const devIntroStopStepInput = document.getElementById("dev-intro-stop-step");
 const devIntroZoomScaleInput = document.getElementById("dev-intro-zoom-scale");
 const devIntroZoomMsInput = document.getElementById("dev-intro-zoom-ms");
 const devIntroZoomDelayMsInput = document.getElementById("dev-intro-zoom-delay-ms");
+const devIntroZoomStartSelect = document.getElementById("dev-intro-zoom-start");
 const devIntroZoomXInput = document.getElementById("dev-intro-zoom-x");
 const devIntroZoomYInput = document.getElementById("dev-intro-zoom-y");
 const devIntroSignalEl = document.getElementById("dev-intro-signal");
 const devDemoTapBtn = document.getElementById("dev-demo-tap-btn");
+const devZoomToCatchBtn = document.getElementById("dev-zoom-to-catch-btn");
+const devShakeDistanceInput = document.getElementById("dev-shake-distance");
+const devShakeSpeedInput = document.getElementById("dev-shake-speed");
 
 let devInitialized = false;
 let devModeTab = "fit";
@@ -255,6 +263,9 @@ let devDemoTaps = 0;
 let devDemoLiftPose = null;
 let devDemoTimerId = null;
 let devDemoStartedAt = 0;
+let devShakeAnimationId = 0;
+let devShakeFrameId = null;
+let devCameraScale = 1;
 
 function showScreen(screen) {
     const all = [loadingScreen, menuScreen, rulesScreen, gameScreen, statsScreen, finalScreen, devScreen];
@@ -310,6 +321,7 @@ function applyProjectDevConfig() {
 function getSerializableDevConfig() {
     return {
         devView: GAME_CONFIG.devView,
+        devShake: GAME_CONFIG.devShake,
         poses: GAME_CONFIG.poses,
         levels: GAME_CONFIG.levels,
     };
@@ -320,16 +332,20 @@ function getLevelIntroSettings(level) {
         level.intro = {
             fallMs: level.fallMs || 420,
             poseSwitchDelayMs: 0,
+            poseLeadMs: 70,
             startSignalDelayMs: 180,
             zoomScale: 1.22,
             zoomMs: 240,
             zoomDelayMs: 0,
+            zoomStart: "contact",
             zoomX: 195,
             zoomY: 255,
         };
     }
 
     level.intro.zoomScale = level.intro.zoomScale || 1.22;
+    level.intro.poseLeadMs = level.intro.poseLeadMs ?? 70;
+    level.intro.zoomStart = level.intro.zoomStart || "contact";
     level.intro.zoomMs = level.intro.zoomMs ?? 240;
     level.intro.zoomDelayMs = level.intro.zoomDelayMs ?? 0;
     level.intro.zoomX = level.intro.zoomX ?? 195;
@@ -604,15 +620,29 @@ function initDevMode() {
     [
         devIntroFallMsInput,
         devIntroPoseDelayMsInput,
+        devIntroPoseLeadMsInput,
         devIntroStartDelayMsInput,
         devIntroZoomScaleInput,
         devIntroZoomMsInput,
         devIntroZoomDelayMsInput,
+        devIntroZoomStartSelect,
         devIntroZoomXInput,
         devIntroZoomYInput,
     ].forEach((el) => {
         el.addEventListener("change", () => {
             updateDevIntroSettingsFromInputs();
+            renderDevMode();
+        });
+    });
+
+    [devShakeDistanceInput, devShakeSpeedInput].forEach((el) => {
+        el.addEventListener("change", () => {
+            updateDevShakeSettingsFromInputs();
+            if (devModeTab === "demo" && devDemoState === "running") {
+                startDevShake();
+                devValuesEl.textContent = `${devValuesEl.textContent}\n\nДрожание обновлено: ${GAME_CONFIG.devShake.distance}px, speed ${GAME_CONFIG.devShake.speed}.`;
+                return;
+            }
             renderDevMode();
         });
     });
@@ -635,9 +665,7 @@ function initDevMode() {
         });
     });
 
-    devFitTabBtn.addEventListener("click", () => setDevModeTab("fit"));
-    devIntroTabBtn.addEventListener("click", () => setDevModeTab("intro"));
-    devDemoTabBtn.addEventListener("click", () => setDevModeTab("demo"));
+    devModeSelect.addEventListener("change", () => setDevModeTab(devModeSelect.value));
     devIntroSignalEl.addEventListener("click", () => {
         if (devModeTab === "demo") {
             handleDevDemoTap();
@@ -685,13 +713,12 @@ function setDevModeTab(tab) {
     devModeTab = tab;
     activeDevIntroAnimationId += 1;
     stopDevDemoTimer();
+    stopDevShake();
     resetDevCamera();
     updateDevVignette(1);
     devDemoState = "idle";
     document.getElementById("dev-stage").classList.remove("stage-win", "stage-lose", "dev-vignette-pulse");
-    devFitTabBtn.classList.toggle("active", tab === "fit");
-    devIntroTabBtn.classList.toggle("active", tab === "intro");
-    devDemoTabBtn.classList.toggle("active", tab === "demo");
+    devModeSelect.value = tab;
     devFitControls.classList.toggle("hidden", tab !== "fit");
     devIntroControls.classList.toggle("hidden", tab !== "intro");
     devDemoControls.classList.toggle("hidden", tab !== "demo");
@@ -785,10 +812,12 @@ function syncDevIntroInputs(level) {
     const intro = getLevelIntroSettings(level);
     devIntroFallMsInput.value = String(intro.fallMs);
     devIntroPoseDelayMsInput.value = String(intro.poseSwitchDelayMs);
+    devIntroPoseLeadMsInput.value = String(intro.poseLeadMs);
     devIntroStartDelayMsInput.value = String(intro.startSignalDelayMs);
     devIntroZoomScaleInput.value = String(intro.zoomScale);
     devIntroZoomMsInput.value = String(intro.zoomMs);
     devIntroZoomDelayMsInput.value = String(intro.zoomDelayMs);
+    devIntroZoomStartSelect.value = intro.zoomStart;
     devIntroZoomXInput.value = String(intro.zoomX);
     devIntroZoomYInput.value = String(intro.zoomY);
 }
@@ -797,15 +826,28 @@ function updateDevIntroSettingsFromInputs() {
     const intro = getLevelIntroSettings(currentDevLevel());
     intro.fallMs = Math.max(80, Number(devIntroFallMsInput.value) || intro.fallMs || 420);
     intro.poseSwitchDelayMs = Math.max(0, Number(devIntroPoseDelayMsInput.value) || 0);
+    intro.poseLeadMs = Math.max(0, Number(devIntroPoseLeadMsInput.value) || 0);
     intro.startSignalDelayMs = Math.max(0, Number(devIntroStartDelayMsInput.value) || 0);
     intro.zoomScale = Math.max(1, Number(devIntroZoomScaleInput.value) || 1);
     intro.zoomMs = Math.max(0, Number(devIntroZoomMsInput.value) || 0);
     intro.zoomDelayMs = Math.max(0, Number(devIntroZoomDelayMsInput.value) || 0);
+    intro.zoomStart = ["fall", "visible"].includes(devIntroZoomStartSelect.value) ? devIntroZoomStartSelect.value : "contact";
     intro.zoomX = Number(devIntroZoomXInput.value) || 195;
     intro.zoomY = Number(devIntroZoomYInput.value) || 255;
 }
 
+function syncDevShakeInputs() {
+    devShakeDistanceInput.value = String(GAME_CONFIG.devShake.distance);
+    devShakeSpeedInput.value = String(GAME_CONFIG.devShake.speed);
+}
+
+function updateDevShakeSettingsFromInputs() {
+    GAME_CONFIG.devShake.distance = Math.max(0, Number(devShakeDistanceInput.value) || 0);
+    GAME_CONFIG.devShake.speed = Math.max(1, Number(devShakeSpeedInput.value) || 1);
+}
+
 function applyDevCamera(scale, x, y) {
+    devCameraScale = scale;
     devCameraLayer.style.transformOrigin = `${x}px ${y}px`;
     devCameraLayer.style.transform = `scale(${scale})`;
 }
@@ -872,6 +914,47 @@ function animateDevCamera(intro, onDone) {
     requestAnimationFrame(tick);
 }
 
+function animateDevCameraTo(scale, durationMs, onDone) {
+    const intro = getLevelIntroSettings(currentDevLevel());
+    const animationId = activeDevIntroAnimationId;
+    const fromScale = devCameraScale;
+    const startedAt = performance.now();
+
+    if (!durationMs) {
+        applyDevCamera(scale, intro.zoomX, intro.zoomY);
+        if (onDone) onDone();
+        return;
+    }
+
+    function tick(now) {
+        if (animationId !== activeDevIntroAnimationId) return;
+
+        const raw = Math.min(1, (now - startedAt) / durationMs);
+        const eased = 1 - Math.pow(1 - raw, 3);
+        applyDevCamera(fromScale + (scale - fromScale) * eased, intro.zoomX, intro.zoomY);
+
+        if (raw < 1) {
+            requestAnimationFrame(tick);
+            return;
+        }
+
+        if (onDone) onDone();
+    }
+
+    requestAnimationFrame(tick);
+}
+
+function devCameraScaleForPose(pose) {
+    const intro = getLevelIntroSettings(currentDevLevel());
+
+    if (pose === "4") return 1;
+
+    const poses = GAME_CONFIG.liftPoses;
+    const index = Math.max(0, poses.indexOf(pose));
+    const progress = index / Math.max(1, poses.length - 1);
+    return intro.zoomScale + (1 - intro.zoomScale) * progress;
+}
+
 function renderDevIntroMode(message = "", keepSignal = false) {
     const level = currentDevLevel();
     if (!level) return;
@@ -899,13 +982,16 @@ function renderDevIntroMode(message = "", keepSignal = false) {
 
     const stop = getObjectPoseSettings(level, "0.5");
     const intro = getLevelIntroSettings(level);
+    syncZoomToCatchButton(level);
     devValuesEl.textContent = [
         "mode: старт уровня",
         `level: ${Number(devLevelSelect.value) + 1} ${level.title}`,
         `fallMs: ${intro.fallMs}`,
         `poseSwitchDelayMs: ${intro.poseSwitchDelayMs}`,
+        `poseLeadMs: ${intro.poseLeadMs}`,
         `startSignalDelayMs: ${intro.startSignalDelayMs}`,
         `zoom: scale ${intro.zoomScale}, ${intro.zoomMs}ms, delay ${intro.zoomDelayMs}ms`,
+        `zoomStart: ${intro.zoomStart}`,
         `zoomFocus: x ${intro.zoomX}, y ${intro.zoomY}`,
         `start: x ${start.x}, y ${start.y}`,
         `stop 0.5: x ${stop.x}, y ${stop.y}, rotation ${stop.rotation || 0}`,
@@ -919,6 +1005,7 @@ function renderDevDemoMode(message = "") {
     if (!level) return;
 
     syncDevIntroInputs(level);
+    syncDevShakeInputs();
     resetDevCamera();
     updateDevVignette(devDemoState === "idle" ? 1 : devDemoTaps / level.tapsRequired);
     setDevStageResult(null);
@@ -946,6 +1033,7 @@ function renderDevDemoMode(message = "") {
         `state: ${devDemoState}`,
         `taps: ${devDemoTaps}/${level.tapsRequired}`,
         `pose: ${pose}`,
+        `shake: ${GAME_CONFIG.devShake.enabled ? "on" : "off"}, ${GAME_CONFIG.devShake.distance}px, speed ${GAME_CONFIG.devShake.speed}`,
         "После старта проиграется падение, зум и затем кнопка станет тапабельной.",
         message,
     ].filter(Boolean).join("\n");
@@ -962,6 +1050,35 @@ function getDevIntroStartSettings(level) {
     };
 }
 
+function getIntroObjectVisibleDelayMs(level, intro) {
+    const start = getDevIntroStartSettings(level);
+    const stop = getObjectPoseSettings(level, "0.5");
+    const distance = stop.y - start.y;
+    if (distance <= 0 || start.y >= 0) return 0;
+
+    const raw = Math.sqrt(Math.max(0, Math.min(1, (0 - start.y) / distance)));
+    return Math.round(raw * intro.fallMs);
+}
+
+function getZoomToCatchMs(level, intro) {
+    const visibleDelayMs = getIntroObjectVisibleDelayMs(level, intro);
+    return Math.max(80, intro.fallMs - intro.poseLeadMs - visibleDelayMs);
+}
+
+function syncZoomToCatchButton(level) {
+    const intro = getLevelIntroSettings(level);
+    const isActive = intro.zoomStart === "visible"
+        && intro.zoomDelayMs === 0
+        && Math.abs(intro.zoomMs - getZoomToCatchMs(level, intro)) <= 1;
+    devZoomToCatchBtn.classList.toggle("active", isActive);
+}
+
+function flashDevButton(button) {
+    button.classList.remove("flash");
+    void button.offsetWidth;
+    button.classList.add("flash");
+}
+
 function playDevIntroAnimation(options = {}) {
     updateDevIntroSettingsFromInputs();
     const animationId = ++activeDevIntroAnimationId;
@@ -972,6 +1089,8 @@ function playDevIntroAnimation(options = {}) {
     const standPose = GAME_CONFIG.poses["0"];
     const contactPose = GAME_CONFIG.poses["0.5"];
     const startedAt = performance.now();
+    let contactPoseApplied = false;
+    let zoomAfterContactPlayed = false;
 
     resetDevCamera();
     setDevStageResult(null);
@@ -986,11 +1105,54 @@ function playDevIntroAnimation(options = {}) {
     setImageSrc(devObjectImg, level.src);
     applyImageTransform(devObjectImg, start);
 
+    function playAfterContactZoom(onDone) {
+        if (zoomAfterContactPlayed) {
+            if (onDone) onDone();
+            return;
+        }
+        zoomAfterContactPlayed = true;
+
+        if (intro.zoomStart === "fall" || intro.zoomStart === "visible") {
+            if (onDone) onDone();
+            return;
+        }
+
+        window.setTimeout(() => {
+            if (animationId !== activeDevIntroAnimationId) return;
+            animateDevCamera(intro, onDone);
+        }, intro.zoomDelayMs);
+    }
+
+    function applyContactPose() {
+        if (contactPoseApplied) return;
+        contactPoseApplied = true;
+        setImageSrc(devBodyImg, contactPose.body.src);
+        applyImageTransform(devBodyImg, contactPose.body);
+        setImageSrc(devHeadImg, GAME_CONFIG.heads[2] || GAME_CONFIG.heads[0]);
+        applyImageTransform(devHeadImg, contactPose.head);
+        updateDevVignette(0);
+        if (options.shakeOnContact) {
+            devDemoLiftPose = "0.5";
+            startDevShake();
+        }
+    }
+
     function tick(now) {
         if (animationId !== activeDevIntroAnimationId) return;
 
-        const raw = Math.min(1, (now - startedAt) / intro.fallMs);
+        const elapsed = now - startedAt;
+        const raw = Math.min(1, elapsed / intro.fallMs);
         const eased = Math.pow(raw, 2);
+
+        if (intro.zoomStart === "fall" || intro.zoomStart === "visible") {
+            const visibleDelayMs = intro.zoomStart === "visible" ? getIntroObjectVisibleDelayMs(level, intro) : 0;
+            const zoomElapsed = Math.max(0, elapsed - intro.zoomDelayMs - visibleDelayMs);
+            const zoomRaw = Math.min(1, zoomElapsed / Math.max(1, intro.zoomMs));
+            const zoomEased = 1 - Math.pow(1 - zoomRaw, 3);
+            const zoomScale = 1 + (intro.zoomScale - 1) * zoomEased;
+            applyDevCamera(zoomScale, intro.zoomX, intro.zoomY);
+        }
+
         applyImageTransform(devObjectImg, {
             width: start.width + (stop.width - start.width) * eased,
             x: start.x + (stop.x - start.x) * eased,
@@ -999,6 +1161,10 @@ function playDevIntroAnimation(options = {}) {
             zIndex: stop.zIndex ?? start.zIndex,
         });
 
+        if (elapsed >= intro.fallMs - intro.poseLeadMs) {
+            applyContactPose();
+        }
+
         if (raw < 1) {
             requestAnimationFrame(tick);
             return;
@@ -1006,28 +1172,21 @@ function playDevIntroAnimation(options = {}) {
 
         window.setTimeout(() => {
             if (animationId !== activeDevIntroAnimationId) return;
-            setImageSrc(devBodyImg, contactPose.body.src);
-            applyImageTransform(devBodyImg, contactPose.body);
-            setImageSrc(devHeadImg, GAME_CONFIG.heads[2] || GAME_CONFIG.heads[0]);
-            applyImageTransform(devHeadImg, contactPose.head);
+            applyContactPose();
             applyImageTransform(devObjectImg, stop);
-            updateDevVignette(0);
             devIntroSignalEl.textContent = "Зум";
 
-            window.setTimeout(() => {
-                if (animationId !== activeDevIntroAnimationId) return;
-                animateDevCamera(intro, () => {
-                    window.setTimeout(() => {
-                        if (animationId !== activeDevIntroAnimationId) return;
-                        devIntroSignalEl.textContent = "Игра началась";
-                        devIntroSignalEl.classList.add("pulsing");
-                        devIntroSignalEl.disabled = !options.playableButton;
-                        devValuesEl.textContent = `${devValuesEl.textContent}\n\nАнимация проиграна. Камера приблизилась к герою, кнопка пульсирует как сигнал старта игры.`;
-                        devExportEl.value = JSON.stringify(getSerializableDevConfig(), null, 2);
-                        if (options.onReady) options.onReady();
-                    }, intro.startSignalDelayMs);
-                });
-            }, intro.zoomDelayMs);
+            playAfterContactZoom(() => {
+                window.setTimeout(() => {
+                    if (animationId !== activeDevIntroAnimationId) return;
+                    devIntroSignalEl.textContent = "Игра началась";
+                    devIntroSignalEl.classList.add("pulsing");
+                    devIntroSignalEl.disabled = !options.playableButton;
+                    devValuesEl.textContent = `${devValuesEl.textContent}\n\nАнимация проиграна. Камера приблизилась к герою, кнопка пульсирует как сигнал старта игры.`;
+                    devExportEl.value = JSON.stringify(getSerializableDevConfig(), null, 2);
+                    if (options.onReady) options.onReady();
+                }, intro.startSignalDelayMs);
+            });
         }, intro.poseSwitchDelayMs);
     }
 
@@ -1036,6 +1195,19 @@ function playDevIntroAnimation(options = {}) {
 
 function adjustDevIntroStop(action) {
     const level = currentDevLevel();
+    const intro = getLevelIntroSettings(level);
+    if (action === "zoom-to-catch") {
+        updateDevIntroSettingsFromInputs();
+        intro.zoomStart = "visible";
+        intro.zoomDelayMs = 0;
+        intro.zoomMs = getZoomToCatchMs(level, intro);
+        syncDevIntroInputs(level);
+        syncZoomToCatchButton(level);
+        flashDevButton(devZoomToCatchBtn);
+        renderDevIntroMode("Зум настроен от появления предмета в кадре до момента подхвата.");
+        return;
+    }
+
     const settings = ensureObjectPoseSettings(level, "0.5");
     const step = Math.max(1, Number(devIntroStopStepInput.value) || 5);
     const rotationStep = Math.max(1, Math.round(step / 2));
@@ -1090,6 +1262,61 @@ function applyDevObjectPose(level, pose) {
     applyImageTransform(devObjectImg, settings);
 }
 
+function shouldShakeDevPose(pose) {
+    return GAME_CONFIG.devShake.enabled && pose !== "0" && pose !== "4" && pose !== "dead";
+}
+
+function stopDevShake() {
+    devShakeAnimationId += 1;
+    if (devShakeFrameId) cancelAnimationFrame(devShakeFrameId);
+    devShakeFrameId = null;
+}
+
+function startDevShake() {
+    stopDevShake();
+    if (!shouldShakeDevPose(devDemoLiftPose)) return;
+
+    const animationId = devShakeAnimationId;
+    const startedAt = performance.now() - 80;
+
+    function applyShake(now) {
+        const pose = devDemoLiftPose || "0.5";
+        const poseSettings = GAME_CONFIG.poses[pose];
+        if (!shouldShakeDevPose(pose) || !poseSettings) return false;
+
+        const distance = GAME_CONFIG.devShake.distance;
+        const speed = GAME_CONFIG.devShake.speed;
+        const wave = Math.sin(((now - startedAt) / 1000) * speed * Math.PI * 2);
+        const offset = wave * distance;
+
+        applyImageTransform(devBodyImg, {
+            ...poseSettings.body,
+            x: poseSettings.body.x + offset,
+        });
+
+        if (poseSettings.head) {
+            applyImageTransform(devHeadImg, {
+                ...poseSettings.head,
+                x: poseSettings.head.x + offset * 1.15,
+            });
+        }
+
+        return true;
+    }
+
+    applyShake(performance.now());
+
+    function tick(now) {
+        if (animationId !== devShakeAnimationId || !["intro", "running"].includes(devDemoState)) return;
+
+        if (!applyShake(now)) return;
+
+        devShakeFrameId = requestAnimationFrame(tick);
+    }
+
+    devShakeFrameId = requestAnimationFrame(tick);
+}
+
 function setDevDemoButton(text, enabled, pulsing) {
     devDemoTapBtn.disabled = !enabled;
     devDemoTapBtn.textContent = text;
@@ -1117,7 +1344,9 @@ function updateDevDemoHeadByTime() {
     const poseSettings = GAME_CONFIG.poses[pose];
     if (!poseSettings?.head) return;
     setImageSrc(devHeadImg, GAME_CONFIG.heads[devDemoHeadIndexByTime()] || GAME_CONFIG.heads[2]);
-    applyImageTransform(devHeadImg, poseSettings.head);
+    if (!shouldShakeDevPose(pose)) {
+        applyImageTransform(devHeadImg, poseSettings.head);
+    }
 }
 
 function startDevDemoTimer() {
@@ -1139,6 +1368,8 @@ function startDevDemoTimer() {
 
 function startDevDemo() {
     stopDevDemoTimer();
+    stopDevShake();
+    updateDevShakeSettingsFromInputs();
     const level = currentDevLevel();
     setDevStageResult(null);
     devDemoState = "intro";
@@ -1148,6 +1379,7 @@ function startDevDemo() {
     setDevDemoButton("Падение", false, false);
     playDevIntroAnimation({
         playableButton: true,
+        shakeOnContact: true,
         onReady: () => {
             if (devModeTab !== "demo") return;
             devDemoState = "running";
@@ -1173,6 +1405,7 @@ function startDevDemo() {
 function resetDevDemo() {
     activeDevIntroAnimationId += 1;
     stopDevDemoTimer();
+    stopDevShake();
     devDemoState = "idle";
     devDemoTaps = 0;
     devDemoLiftPose = null;
@@ -1190,6 +1423,24 @@ function handleDevDemoAction(action) {
 
     if (action === "reset") {
         resetDevDemo();
+        return;
+    }
+
+    if (action === "shake-on") {
+        updateDevShakeSettingsFromInputs();
+        GAME_CONFIG.devShake.enabled = true;
+        startDevShake();
+        devValuesEl.textContent = `${devValuesEl.textContent}\n\nДрожание включено: ${GAME_CONFIG.devShake.distance}px, speed ${GAME_CONFIG.devShake.speed}.`;
+        return;
+    }
+
+    if (action === "shake-off") {
+        GAME_CONFIG.devShake.enabled = false;
+        stopDevShake();
+        if (devDemoLiftPose && devDemoState === "running") {
+            applyDevHeroPose(devDemoLiftPose, devDemoHeadIndexByTime());
+        }
+        devValuesEl.textContent = `${devValuesEl.textContent}\n\nДрожание выключено.`;
     }
 }
 
@@ -1213,9 +1464,12 @@ function handleDevDemoTap() {
 
     if (pose !== devDemoLiftPose) {
         devDemoLiftPose = pose;
+        stopDevShake();
         updateDevVignette(devVignetteProgressForPose(pose));
         applyDevHeroPose(pose, devDemoHeadIndexByTime());
         applyDevObjectPose(level, pose);
+        startDevShake();
+        animateDevCameraTo(devCameraScaleForPose(pose), 180);
     } else {
         updateDevDemoHeadByTime();
     }
@@ -1232,11 +1486,13 @@ function handleDevDemoTap() {
 
     if (progress >= 1) {
         stopDevDemoTimer();
+        stopDevShake();
         devDemoState = "complete";
         updateDevVignette(1);
         setDevStageResult("win");
         applyDevHeroPose("4", GAME_CONFIG.heads.length - 1);
         applyDevObjectPose(level, "4");
+        animateDevCameraTo(1, 220);
         setDevDemoButton("Победа", false, false);
         devValuesEl.textContent = [
             "mode: демо уровня",
@@ -1254,11 +1510,13 @@ function failDevDemo() {
 
     const level = currentDevLevel();
     stopDevDemoTimer();
+    stopDevShake();
     devDemoState = "failed";
     updateDevVignette(1);
     setDevStageResult("lose");
     applyDevObjectPose(level, "dead");
     applyDevHeroPose("dead", 0);
+    animateDevCameraTo(getLevelIntroSettings(level).zoomScale * 1.16, 220);
     setDevDemoButton("Возобновить", true, false);
     devValuesEl.textContent = [
         "mode: демо уровня",
