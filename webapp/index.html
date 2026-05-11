@@ -87,6 +87,7 @@
         <div class="stage dev-stage" id="dev-stage">
             <div id="dev-camera-layer" class="stage-camera-layer">
                 <img id="dev-background-img" class="dev-background-img" alt="">
+                <img id="dev-shadow-img" class="sprite" alt="">
                 <img id="dev-object-img" class="sprite" alt="">
                 <img id="dev-body-img" class="sprite" alt="">
                 <img id="dev-head-img" class="sprite" alt="">
@@ -118,6 +119,8 @@
                         <option value="body">Тело</option>
                         <option value="head">Голова</option>
                         <option value="object">Предмет</option>
+                        <option value="shadow">Тень</option>
+                        <option value="heroShade">Затемнение</option>
                         <option value="background">Фон</option>
                     </select>
                 </label>
@@ -137,6 +140,12 @@
                     <button data-dev-action="rotate-right">Поворот +</button>
                     <button data-dev-action="smaller">Размер -</button>
                     <button data-dev-action="bigger">Размер +</button>
+                    <button data-dev-action="narrower">Уже</button>
+                    <button data-dev-action="wider">Шире</button>
+                    <button data-dev-action="shorter">Ниже</button>
+                    <button data-dev-action="taller">Выше</button>
+                    <button data-dev-action="shade-lighter">Светлее</button>
+                    <button data-dev-action="shade-darker">Темнее</button>
                 </div>
             </div>
 
@@ -201,6 +210,9 @@
                 </div>
                 <button id="dev-demo-tap-btn" class="dev-intro-signal" type="button" disabled>Запусти демо</button>
                 <div class="dev-grid">
+                    <label>Тапы демо
+                        <input id="dev-demo-taps-required" type="number" value="0" min="0" max="500">
+                    </label>
                     <label>Дрожание, px
                         <input id="dev-shake-distance" type="number" value="1.6" min="0" max="12" step="0.1">
                     </label>
@@ -219,10 +231,22 @@
                     <label>Парение, скорость
                         <input id="dev-float-speed" type="number" value="0.55" min="0.1" max="3" step="0.05">
                     </label>
+                    <label>Тень шире, %
+                        <input id="dev-float-shadow-spread" type="number" value="14" min="0" max="80" step="1">
+                    </label>
                 </div>
                 <div class="dev-pad">
                     <button data-dev-demo-action="float-on">Включить парение</button>
                     <button data-dev-demo-action="float-off">Выключить парение</button>
+                </div>
+                <div class="dev-grid">
+                    <label>Поза 2 -> 3, мс
+                        <input id="dev-pose23-ms" type="number" value="220" min="0" max="1500">
+                    </label>
+                </div>
+                <div class="dev-pad">
+                    <button data-dev-demo-action="pose23-on">Включить 2->3</button>
+                    <button data-dev-demo-action="pose23-off">Выключить 2->3</button>
                 </div>
             </div>
 

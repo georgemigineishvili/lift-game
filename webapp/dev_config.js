@@ -16,8 +16,16 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
   },
   "devFloat": {
     "enabled": true,
-    "distance": 6,
-    "speed": 0.55
+    "distance": 8,
+    "speed": 0.55,
+    "shadowSpread": 7
+  },
+  "devDemo": {
+    "tapsRequired": 25
+  },
+  "devPoseCombo": {
+    "enabled": true,
+    "pose2To3Ms": 35
   },
   "poses": {
     "0": {
@@ -93,14 +101,14 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         "src": "../assets/bodymove/body-push-fly-final-4.png",
         "width": 126,
         "x": 195,
-        "y": 295,
+        "y": 263,
         "rotation": 0,
         "zIndex": 20
       },
       "head": {
         "width": 46,
         "x": 199,
-        "y": 233,
+        "y": 202,
         "rotation": 0,
         "zIndex": 40
       }
@@ -180,7 +188,7 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         },
         "4": {
           "x": 195,
-          "y": 183,
+          "y": 148,
           "rotation": -4,
           "zIndex": 30
         },
@@ -208,6 +216,79 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         "zoomY": 255,
         "poseLeadMs": 100,
         "zoomStart": "visible"
+      },
+      "shadowByPose": {
+        "0": {
+          "width": 126,
+          "x": 197,
+          "y": 379,
+          "scaleX": 0.62,
+          "scaleY": 0.4199999999999995,
+          "rotation": 0,
+          "zIndex": 12
+        },
+        "1": {
+          "width": 126,
+          "x": 200,
+          "y": 380,
+          "scaleX": 1.02,
+          "scaleY": 0.6199999999999997,
+          "rotation": 0,
+          "zIndex": 12
+        },
+        "2": {
+          "width": 126,
+          "x": 200,
+          "y": 380,
+          "scaleX": 1.06,
+          "scaleY": 0.5999999999999996,
+          "rotation": 0,
+          "zIndex": 12
+        },
+        "3": {
+          "width": 126,
+          "x": 199,
+          "y": 382,
+          "scaleX": 0.94,
+          "scaleY": 0.5999999999999996,
+          "rotation": 0,
+          "zIndex": 12
+        },
+        "4": {
+          "width": 126,
+          "x": 205,
+          "y": 380,
+          "scaleX": 0.8999999999999999,
+          "scaleY": 0.5599999999999996,
+          "rotation": 0,
+          "zIndex": 12
+        },
+        "0.5": {
+          "width": 126,
+          "x": 196,
+          "y": 380,
+          "scaleX": 1.06,
+          "scaleY": 0.6399999999999997,
+          "rotation": 0,
+          "zIndex": 12
+        }
+      },
+      "heroShadeByPose": {
+        "1": {
+          "opacity": 0.04
+        },
+        "2": {
+          "opacity": 0.019999999999999997
+        },
+        "3": {
+          "opacity": 0.019999999999999997
+        },
+        "4": {
+          "opacity": 0.01
+        },
+        "0.5": {
+          "opacity": 0.05
+        }
       }
     },
     {
@@ -254,7 +335,7 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         },
         "4": {
           "x": 216,
-          "y": 175,
+          "y": 163,
           "rotation": -2,
           "zIndex": 30
         },
@@ -282,6 +363,17 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         "zoomX": 195,
         "zoomY": 255,
         "zoomStart": "visible"
+      },
+      "shadowByPose": {
+        "0": {
+          "width": 126,
+          "x": 198,
+          "y": 379,
+          "scaleX": 0.7599999999999998,
+          "scaleY": 0.5399999999999996,
+          "rotation": 0,
+          "zIndex": 12
+        }
       }
     },
     {
@@ -328,8 +420,8 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         },
         "4": {
           "x": 197,
-          "y": 198,
-          "rotation": -2,
+          "y": 195,
+          "rotation": -1,
           "zIndex": 30
         },
         "0.5": {
@@ -356,6 +448,17 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         "zoomY": 255,
         "poseLeadMs": 100,
         "zoomStart": "visible"
+      },
+      "shadowByPose": {
+        "0": {
+          "width": 126,
+          "x": 197,
+          "y": 380,
+          "scaleX": 0.6799999999999997,
+          "scaleY": 0.5599999999999996,
+          "rotation": 0,
+          "zIndex": 12
+        }
       }
     },
     {
@@ -402,8 +505,8 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         },
         "4": {
           "x": 201,
-          "y": 134,
-          "rotation": -4,
+          "y": 102,
+          "rotation": -1,
           "zIndex": 30
         },
         "0.5": {
@@ -430,6 +533,79 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         "zoomY": 255,
         "poseLeadMs": 100,
         "zoomStart": "visible"
+      },
+      "shadowByPose": {
+        "0": {
+          "width": 126,
+          "x": 196,
+          "y": 379,
+          "scaleX": 0.5999999999999996,
+          "scaleY": 0.39999999999999947,
+          "rotation": 0,
+          "zIndex": 12
+        },
+        "1": {
+          "width": 126,
+          "x": 190,
+          "y": 382,
+          "scaleX": 2.7000000000000015,
+          "scaleY": 0.8399999999999999,
+          "rotation": 0,
+          "zIndex": 12
+        },
+        "2": {
+          "width": 126,
+          "x": 195,
+          "y": 380,
+          "scaleX": 2.6800000000000015,
+          "scaleY": 0.66,
+          "rotation": 0,
+          "zIndex": 12
+        },
+        "3": {
+          "width": 126,
+          "x": 198,
+          "y": 381,
+          "scaleX": 2.4800000000000013,
+          "scaleY": 0.5999999999999996,
+          "rotation": 0,
+          "zIndex": 12
+        },
+        "4": {
+          "width": 126,
+          "x": 200,
+          "y": 379,
+          "scaleX": 1.4200000000000004,
+          "scaleY": 0.4399999999999995,
+          "rotation": 0,
+          "zIndex": 12
+        },
+        "0.5": {
+          "width": 126,
+          "x": 195,
+          "y": 382,
+          "scaleX": 2.6200000000000014,
+          "scaleY": 0.84,
+          "rotation": 0,
+          "zIndex": 12
+        }
+      },
+      "heroShadeByPose": {
+        "1": {
+          "opacity": 0.4200000000000002
+        },
+        "2": {
+          "opacity": 0.38000000000000017
+        },
+        "3": {
+          "opacity": 0.38999999999999996
+        },
+        "4": {
+          "opacity": 0.15
+        },
+        "0.5": {
+          "opacity": 0.44999999999999996
+        }
       }
     },
     {
@@ -476,7 +652,7 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         },
         "4": {
           "x": 214,
-          "y": 68,
+          "y": 55,
           "rotation": 183,
           "zIndex": 30
         },
@@ -550,7 +726,7 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         },
         "4": {
           "x": 182,
-          "y": 113,
+          "y": 100,
           "rotation": -6,
           "zIndex": 30
         },
@@ -624,7 +800,7 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         },
         "4": {
           "x": 195,
-          "y": 122,
+          "y": 109,
           "rotation": -12,
           "zIndex": 30
         },
@@ -698,7 +874,7 @@ window.SUPER_LIFT_PROJECT_CONFIG = {
         },
         "4": {
           "x": 201,
-          "y": 29,
+          "y": 18,
           "rotation": -2,
           "zIndex": 30
         },

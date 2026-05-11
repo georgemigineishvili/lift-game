@@ -35,6 +35,24 @@ const GAME_CONFIG = {
         enabled: true,
         distance: 6,
         speed: 0.55,
+        shadowSpread: 14,
+    },
+    devDemo: {
+        tapsRequired: 0,
+    },
+    devPoseCombo: {
+        enabled: true,
+        pose2To3Ms: 220,
+    },
+    heroShadow: {
+        src: "../assets/bodymove/shadow-hero.png",
+        width: 126,
+        x: 195,
+        y: 409,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        zIndex: 12,
     },
     stage: {
         width: 390,
@@ -207,6 +225,7 @@ const heroBodyImg = document.getElementById("hero-body-img");
 const heroHeadImg = document.getElementById("hero-head-img");
 const levelObjectImg = document.getElementById("level-object-img");
 const devBackgroundImg = document.getElementById("dev-background-img");
+const devShadowImg = document.getElementById("dev-shadow-img");
 const devBodyImg = document.getElementById("dev-body-img");
 const devHeadImg = document.getElementById("dev-head-img");
 const devObjectImg = document.getElementById("dev-object-img");
@@ -259,8 +278,11 @@ const devDemoTapBtn = document.getElementById("dev-demo-tap-btn");
 const devZoomToCatchBtn = document.getElementById("dev-zoom-to-catch-btn");
 const devShakeDistanceInput = document.getElementById("dev-shake-distance");
 const devShakeSpeedInput = document.getElementById("dev-shake-speed");
+const devDemoTapsRequiredInput = document.getElementById("dev-demo-taps-required");
 const devFloatDistanceInput = document.getElementById("dev-float-distance");
 const devFloatSpeedInput = document.getElementById("dev-float-speed");
+const devFloatShadowSpreadInput = document.getElementById("dev-float-shadow-spread");
+const devPose23MsInput = document.getElementById("dev-pose23-ms");
 
 let devInitialized = false;
 let devModeTab = "fit";
@@ -274,6 +296,8 @@ let devShakeAnimationId = 0;
 let devShakeFrameId = null;
 let devFloatAnimationId = 0;
 let devFloatFrameId = null;
+let devDemoPoseTimerId = null;
+let devDemoPose3LiftProgress = 0;
 let devCameraScale = 1;
 
 function showScreen(screen) {
@@ -332,6 +356,8 @@ function getSerializableDevConfig() {
         devView: GAME_CONFIG.devView,
         devShake: GAME_CONFIG.devShake,
         devFloat: GAME_CONFIG.devFloat,
+        devDemo: GAME_CONFIG.devDemo,
+        devPoseCombo: GAME_CONFIG.devPoseCombo,
         poses: GAME_CONFIG.poses,
         levels: GAME_CONFIG.levels,
     };
@@ -364,7 +390,7 @@ function getLevelIntroSettings(level) {
 }
 
 function collectAssetUrls() {
-    const urls = new Set(GAME_CONFIG.heads);
+    const urls = new Set([...GAME_CONFIG.heads, GAME_CONFIG.heroShadow?.src].filter(Boolean));
 
     Object.values(GAME_CONFIG.poses).forEach((pose) => {
         if (pose.body?.src) urls.add(pose.body.src);
@@ -433,11 +459,140 @@ function getObjectPoseSettings(level, pose) {
     };
 }
 
+function getShadowPoseSettings(level, pose) {
+    const base = GAME_CONFIG.heroShadow;
+    return {
+        ...base,
+        ...(level.shadowByPose?.[pose] || {}),
+    };
+}
+
+function ensureShadowPoseSettings(level, pose) {
+    if (!level.shadowByPose) level.shadowByPose = {};
+    if (!level.shadowByPose[pose]) {
+        const settings = getShadowPoseSettings(level, pose);
+        level.shadowByPose[pose] = {
+            width: settings.width,
+            x: settings.x,
+            y: settings.y,
+            scaleX: settings.scaleX ?? 1,
+            scaleY: settings.scaleY ?? 1,
+            rotation: settings.rotation || 0,
+            zIndex: settings.zIndex ?? 12,
+        };
+    }
+    return level.shadowByPose[pose];
+}
+
+function getHeroShadeSettings(level, pose) {
+    return {
+        opacity: 0,
+        ...(level.heroShadeByPose?.[pose] || {}),
+    };
+}
+
+function ensureHeroShadeSettings(level, pose) {
+    if (!level.heroShadeByPose) level.heroShadeByPose = {};
+    if (!level.heroShadeByPose[pose]) {
+        level.heroShadeByPose[pose] = { opacity: getHeroShadeSettings(level, pose).opacity };
+    }
+    return level.heroShadeByPose[pose];
+}
+
+function applyDevShadow(level, pose) {
+    const settings = getDevShadowLayerSettings(level, pose);
+    applyDevShadowSettings(settings);
+}
+
+function applyDevShadowSettings(settings) {
+    devShadowImg.classList.remove("hidden");
+    setImageSrc(devShadowImg, GAME_CONFIG.heroShadow.src);
+    applyImageTransform(devShadowImg, settings);
+}
+
+function applyHeroShade(level, pose) {
+    const opacity = getDevHeroShadeOpacity(level, pose);
+    applyHeroShadeOpacity(opacity);
+}
+
+function applyHeroShadeOpacity(opacity) {
+    const safeOpacity = Math.max(0, Math.min(0.85, opacity || 0));
+    const filter = safeOpacity > 0 ? `brightness(${1 - safeOpacity})` : "";
+    devBodyImg.style.filter = filter;
+    devHeadImg.style.filter = filter;
+}
+
+function lerpValue(start, end, progress) {
+    return start + (end - start) * progress;
+}
+
+function interpolateLayerSettings(start, end, progress) {
+    return {
+        width: lerpValue(start.width, end.width, progress),
+        x: lerpValue(start.x, end.x, progress),
+        y: lerpValue(start.y, end.y, progress),
+        scaleX: lerpValue(start.scaleX ?? 1, end.scaleX ?? 1, progress),
+        scaleY: lerpValue(start.scaleY ?? 1, end.scaleY ?? 1, progress),
+        rotation: lerpValue(start.rotation || 0, end.rotation || 0, progress),
+        zIndex: end.zIndex ?? start.zIndex,
+    };
+}
+
+function shouldApplyDevPose3Lift(pose) {
+    return devModeTab === "demo" && devDemoState === "running" && pose === "3" && devDemoPose3LiftProgress > 0;
+}
+
+function getDevHeroLayerSettings(pose) {
+    const poseSettings = GAME_CONFIG.poses[pose];
+    if (!poseSettings || !shouldApplyDevPose3Lift(pose)) return poseSettings;
+
+    const finalPose = GAME_CONFIG.poses["4"];
+    const liftY = (finalPose.body.y - poseSettings.body.y) * devDemoPose3LiftProgress;
+    return {
+        body: {
+            ...interpolateLayerSettings(poseSettings.body, finalPose.body, devDemoPose3LiftProgress),
+            y: poseSettings.body.y + liftY,
+        },
+        head: poseSettings.head && finalPose.head
+            ? {
+                ...interpolateLayerSettings(poseSettings.head, finalPose.head, devDemoPose3LiftProgress),
+                y: poseSettings.head.y + liftY,
+            }
+            : poseSettings.head,
+    };
+}
+
+function getDevPose3LiftY() {
+    return (GAME_CONFIG.poses["4"].body.y - GAME_CONFIG.poses["3"].body.y) * devDemoPose3LiftProgress;
+}
+
+function getDevShadowLayerSettings(level, pose) {
+    if (!shouldApplyDevPose3Lift(pose)) return getShadowPoseSettings(level, pose);
+
+    return interpolateLayerSettings(
+        getShadowPoseSettings(level, "3"),
+        getShadowPoseSettings(level, "4"),
+        devDemoPose3LiftProgress
+    );
+}
+
+function getDevHeroShadeOpacity(level, pose) {
+    if (!shouldApplyDevPose3Lift(pose)) {
+        return getHeroShadeSettings(level, pose).opacity || 0;
+    }
+
+    return lerpValue(
+        getHeroShadeSettings(level, "3").opacity || 0,
+        getHeroShadeSettings(level, "4").opacity || 0,
+        devDemoPose3LiftProgress
+    );
+}
+
 function applyImageTransform(el, settings) {
     el.style.width = `${settings.width}px`;
     el.style.left = `${settings.x}px`;
     el.style.top = `${settings.y}px`;
-    el.style.transform = `translate(-50%, -50%) rotate(${settings.rotation || 0}deg)`;
+    el.style.transform = `translate(-50%, -50%) scale(${settings.scaleX ?? 1}, ${settings.scaleY ?? 1}) rotate(${settings.rotation || 0}deg)`;
     if (settings.zIndex !== undefined) {
         el.style.zIndex = settings.zIndex;
     }
@@ -657,16 +812,34 @@ function initDevMode() {
         });
     });
 
-    [devFloatDistanceInput, devFloatSpeedInput].forEach((el) => {
+    devDemoTapsRequiredInput.addEventListener("change", () => {
+        updateDevDemoSettingsFromInputs();
+        if (devModeTab === "demo") {
+            resetDevDemo();
+        } else {
+            renderDevMode();
+        }
+    });
+
+    [devFloatDistanceInput, devFloatSpeedInput, devFloatShadowSpreadInput].forEach((el) => {
         el.addEventListener("change", () => {
             updateDevFloatSettingsFromInputs();
             if (devModeTab === "demo" && devDemoState === "complete") {
                 startDevFloat();
-                devValuesEl.textContent = `${devValuesEl.textContent}\n\nПарение обновлено: ${GAME_CONFIG.devFloat.distance}px, speed ${GAME_CONFIG.devFloat.speed}.`;
+                devValuesEl.textContent = `${devValuesEl.textContent}\n\nПарение обновлено: ${GAME_CONFIG.devFloat.distance}px, speed ${GAME_CONFIG.devFloat.speed}, shadow ${GAME_CONFIG.devFloat.shadowSpread}%.`;
                 return;
             }
             renderDevMode();
         });
+    });
+
+    devPose23MsInput.addEventListener("change", () => {
+        updateDevPoseComboSettingsFromInputs();
+        if (devModeTab === "demo" && devDemoState === "running") {
+            stopDevDemoPoseTimer();
+            scheduleDevPose3();
+        }
+        devValuesEl.textContent = `${devValuesEl.textContent}\n\nПереход 2->3 обновлен: ${GAME_CONFIG.devPoseCombo.pose2To3Ms}мс.`;
     });
 
     document.querySelectorAll("[data-dev-action]").forEach((button) => {
@@ -775,6 +948,14 @@ function currentDevTargetSettings(createObject = false) {
     }
 
     const level = currentDevLevel();
+    if (target === "shadow") {
+        return createObject ? ensureShadowPoseSettings(level, pose) : getShadowPoseSettings(level, pose);
+    }
+
+    if (target === "heroShade") {
+        return createObject ? ensureHeroShadeSettings(level, pose) : getHeroShadeSettings(level, pose);
+    }
+
     return createObject ? ensureObjectPoseSettings(level, pose) : getObjectPoseSettings(level, pose);
 }
 
@@ -797,6 +978,7 @@ function renderDevMode() {
     const level = currentDevLevel();
     if (!poseSettings || !level) return;
 
+    applyDevShadow(level, pose);
     setImageSrc(devBodyImg, poseSettings.body.src);
     applyImageTransform(devBodyImg, poseSettings.body);
 
@@ -812,21 +994,34 @@ function renderDevMode() {
     devObjectImg.classList.remove("hidden");
     setImageSrc(devObjectImg, level.src);
     applyImageTransform(devObjectImg, objectSettings);
+    applyHeroShade(level, pose);
 
     const active = currentDevTargetSettings(false);
-    devValuesEl.textContent = active
+    if (devTargetSelect.value === "heroShade") {
+        devValuesEl.textContent = [
+            `target: ${devTargetSelect.value}`,
+            `pose: ${pose}`,
+            `level: ${Number(devLevelSelect.value) + 1} ${level.title}`,
+            `opacity: ${active.opacity}`,
+        ].join("\n");
+    } else {
+        devValuesEl.textContent = active
         ? [
             `target: ${devTargetSelect.value}`,
             `pose: ${pose}`,
             `level: ${Number(devLevelSelect.value) + 1} ${level.title}`,
             devTargetSelect.value === "background" ? `background: ${GAME_CONFIG.devView.backgroundSrc}` : "",
+            devTargetSelect.value === "shadow" ? `shadow: ${GAME_CONFIG.heroShadow.src}` : "",
             `x: ${active.x}`,
             `y: ${active.y}`,
             `width: ${active.width}`,
+            `scaleX: ${active.scaleX ?? 1}`,
+            `scaleY: ${active.scaleY ?? 1}`,
             `rotation: ${active.rotation || 0}`,
             `zIndex: ${active.zIndex ?? ""}`,
         ].filter(Boolean).join("\n")
         : `target: ${devTargetSelect.value}\npose: ${pose}\nЭтот слой у позы отсутствует.`;
+    }
 
     devExportEl.value = JSON.stringify(getSerializableDevConfig(), null, 2);
 }
@@ -869,14 +1064,36 @@ function updateDevShakeSettingsFromInputs() {
     GAME_CONFIG.devShake.speed = Math.max(1, Number(devShakeSpeedInput.value) || 1);
 }
 
+function syncDevDemoInputs() {
+    devDemoTapsRequiredInput.value = String(GAME_CONFIG.devDemo.tapsRequired || 0);
+}
+
+function updateDevDemoSettingsFromInputs() {
+    GAME_CONFIG.devDemo.tapsRequired = Math.max(0, Math.round(Number(devDemoTapsRequiredInput.value) || 0));
+}
+
+function getDevDemoTapGoal(level) {
+    return Math.max(1, GAME_CONFIG.devDemo.tapsRequired || level.tapsRequired);
+}
+
 function syncDevFloatInputs() {
     devFloatDistanceInput.value = String(GAME_CONFIG.devFloat.distance);
     devFloatSpeedInput.value = String(GAME_CONFIG.devFloat.speed);
+    devFloatShadowSpreadInput.value = String(GAME_CONFIG.devFloat.shadowSpread);
 }
 
 function updateDevFloatSettingsFromInputs() {
     GAME_CONFIG.devFloat.distance = Math.max(0, Number(devFloatDistanceInput.value) || 0);
     GAME_CONFIG.devFloat.speed = Math.max(0.1, Number(devFloatSpeedInput.value) || 0.1);
+    GAME_CONFIG.devFloat.shadowSpread = Math.max(0, Number(devFloatShadowSpreadInput.value) || 0);
+}
+
+function syncDevPoseComboInputs() {
+    devPose23MsInput.value = String(GAME_CONFIG.devPoseCombo.pose2To3Ms);
+}
+
+function updateDevPoseComboSettingsFromInputs() {
+    GAME_CONFIG.devPoseCombo.pose2To3Ms = Math.max(0, Number(devPose23MsInput.value) || 0);
 }
 
 function applyDevCamera(scale, x, y) {
@@ -1002,6 +1219,7 @@ function renderDevIntroMode(message = "", keepSignal = false) {
     }
 
     const standPose = GAME_CONFIG.poses["0"];
+    applyDevShadow(level, "0");
     setImageSrc(devBodyImg, standPose.body.src);
     applyImageTransform(devBodyImg, standPose.body);
     devHeadImg.classList.remove("hidden");
@@ -1012,6 +1230,7 @@ function renderDevIntroMode(message = "", keepSignal = false) {
     devObjectImg.classList.remove("hidden");
     setImageSrc(devObjectImg, level.src);
     applyImageTransform(devObjectImg, start);
+    applyHeroShade(level, "0");
 
     const stop = getObjectPoseSettings(level, "0.5");
     const intro = getLevelIntroSettings(level);
@@ -1038,10 +1257,13 @@ function renderDevDemoMode(message = "") {
     if (!level) return;
 
     syncDevIntroInputs(level);
+    syncDevDemoInputs();
     syncDevShakeInputs();
     syncDevFloatInputs();
+    syncDevPoseComboInputs();
     resetDevCamera();
-    updateDevVignette(devDemoState === "idle" ? 1 : devDemoTaps / level.tapsRequired);
+    const tapGoal = getDevDemoTapGoal(level);
+    updateDevVignette(devDemoState === "idle" ? 1 : devDemoTaps / tapGoal);
     setDevStageResult(null);
     devIntroSignalEl.classList.remove("pulsing");
     devIntroSignalEl.disabled = true;
@@ -1050,6 +1272,7 @@ function renderDevDemoMode(message = "") {
 
     const pose = devDemoState === "idle" ? "0" : (devDemoLiftPose || "0.5");
     const poseSettings = GAME_CONFIG.poses[pose];
+    applyDevShadow(level, pose);
     setImageSrc(devBodyImg, poseSettings.body.src);
     applyImageTransform(devBodyImg, poseSettings.body);
     devHeadImg.classList.remove("hidden");
@@ -1060,15 +1283,17 @@ function renderDevDemoMode(message = "") {
     devObjectImg.classList.remove("hidden");
     setImageSrc(devObjectImg, level.src);
     applyImageTransform(devObjectImg, objectSettings);
+    applyHeroShade(level, pose);
 
     devValuesEl.textContent = [
         "mode: демо уровня",
         `level: ${Number(devLevelSelect.value) + 1} ${level.title}`,
         `state: ${devDemoState}`,
-        `taps: ${devDemoTaps}/${level.tapsRequired}`,
+        `taps: ${devDemoTaps}/${tapGoal}`,
         `pose: ${pose}`,
         `shake: ${GAME_CONFIG.devShake.enabled ? "on" : "off"}, ${GAME_CONFIG.devShake.distance}px, speed ${GAME_CONFIG.devShake.speed}`,
-        `float: ${GAME_CONFIG.devFloat.enabled ? "on" : "off"}, ${GAME_CONFIG.devFloat.distance}px, speed ${GAME_CONFIG.devFloat.speed}`,
+        `float: ${GAME_CONFIG.devFloat.enabled ? "on" : "off"}, ${GAME_CONFIG.devFloat.distance}px, speed ${GAME_CONFIG.devFloat.speed}, shadow ${GAME_CONFIG.devFloat.shadowSpread}%`,
+        `pose2to3: ${GAME_CONFIG.devPoseCombo.enabled ? "on" : "off"}, ${GAME_CONFIG.devPoseCombo.pose2To3Ms}ms`,
         "После старта проиграется падение, зум и затем кнопка станет тапабельной.",
         message,
     ].filter(Boolean).join("\n");
@@ -1121,6 +1346,10 @@ function playDevIntroAnimation(options = {}) {
     const intro = getLevelIntroSettings(level);
     const start = getDevIntroStartSettings(level);
     const stop = getObjectPoseSettings(level, "0.5");
+    const shadowStart = getShadowPoseSettings(level, "0");
+    const shadowStop = getShadowPoseSettings(level, "0.5");
+    const shadeStart = getHeroShadeSettings(level, "0");
+    const shadeStop = getHeroShadeSettings(level, "0.5");
     const standPose = GAME_CONFIG.poses["0"];
     const contactPose = GAME_CONFIG.poses["0.5"];
     const startedAt = performance.now();
@@ -1133,6 +1362,8 @@ function playDevIntroAnimation(options = {}) {
     devIntroSignalEl.classList.remove("pulsing");
     devIntroSignalEl.disabled = true;
     devIntroSignalEl.textContent = "Падение";
+    applyDevShadowSettings(shadowStart);
+    applyHeroShadeOpacity(shadeStart.opacity || 0);
     setImageSrc(devBodyImg, standPose.body.src);
     applyImageTransform(devBodyImg, standPose.body);
     setImageSrc(devHeadImg, GAME_CONFIG.heads[0]);
@@ -1165,6 +1396,8 @@ function playDevIntroAnimation(options = {}) {
         applyImageTransform(devBodyImg, contactPose.body);
         setImageSrc(devHeadImg, GAME_CONFIG.heads[2] || GAME_CONFIG.heads[0]);
         applyImageTransform(devHeadImg, contactPose.head);
+        applyDevShadowSettings(shadowStop);
+        applyHeroShadeOpacity(shadeStop.opacity || 0);
         updateDevVignette(0);
         if (options.shakeOnContact) {
             devDemoLiftPose = "0.5";
@@ -1195,6 +1428,8 @@ function playDevIntroAnimation(options = {}) {
             rotation: start.rotation + ((stop.rotation || 0) - start.rotation) * eased,
             zIndex: stop.zIndex ?? start.zIndex,
         });
+        applyDevShadowSettings(interpolateLayerSettings(shadowStart, shadowStop, eased));
+        applyHeroShadeOpacity(lerpValue(shadeStart.opacity || 0, shadeStop.opacity || 0, eased));
 
         if (elapsed >= intro.fallMs - intro.poseLeadMs) {
             applyContactPose();
@@ -1275,23 +1510,27 @@ function handleDevIntroAction(action) {
 
 function applyDevHeroPose(pose, headIndex) {
     const poseSettings = GAME_CONFIG.poses[pose];
+    const visualSettings = getDevHeroLayerSettings(pose);
     if (!poseSettings) return;
 
+    applyDevShadow(currentDevLevel(), pose);
     setImageSrc(devBodyImg, poseSettings.body.src);
-    applyImageTransform(devBodyImg, poseSettings.body);
+    applyImageTransform(devBodyImg, visualSettings.body);
 
     if (!poseSettings.head) {
         devHeadImg.classList.add("hidden");
+        applyHeroShade(currentDevLevel(), pose);
         return;
     }
 
     devHeadImg.classList.remove("hidden");
     setImageSrc(devHeadImg, GAME_CONFIG.heads[headIndex] || GAME_CONFIG.heads[0]);
-    applyImageTransform(devHeadImg, poseSettings.head);
+    applyImageTransform(devHeadImg, visualSettings.head);
+    applyHeroShade(currentDevLevel(), pose);
 }
 
 function applyDevObjectPose(level, pose) {
-    const settings = getObjectPoseSettings(level, pose);
+    const settings = getDevObjectLayerSettings(level, pose);
     devObjectImg.classList.remove("hidden");
     setImageSrc(devObjectImg, level.src);
     applyImageTransform(devObjectImg, settings);
@@ -1317,6 +1556,7 @@ function startDevShake() {
     function applyShake(now) {
         const pose = devDemoLiftPose || "0.5";
         const poseSettings = GAME_CONFIG.poses[pose];
+        const visualSettings = getDevHeroLayerSettings(pose);
         if (!shouldShakeDevPose(pose) || !poseSettings) return false;
 
         const distance = GAME_CONFIG.devShake.distance;
@@ -1325,14 +1565,14 @@ function startDevShake() {
         const offset = wave * distance;
 
         applyImageTransform(devBodyImg, {
-            ...poseSettings.body,
-            x: poseSettings.body.x + offset,
+            ...visualSettings.body,
+            x: visualSettings.body.x + offset,
         });
 
-        if (poseSettings.head) {
+        if (visualSettings.head) {
             applyImageTransform(devHeadImg, {
-                ...poseSettings.head,
-                x: poseSettings.head.x + offset * 1.15,
+                ...visualSettings.head,
+                x: visualSettings.head.x + offset * 1.15,
             });
         }
 
@@ -1358,6 +1598,29 @@ function stopDevFloat() {
     devFloatFrameId = null;
 }
 
+function getDevObjectLayerSettings(level, pose) {
+    let settings = getObjectPoseSettings(level, pose);
+    if (shouldApplyDevPose3Lift(pose)) {
+        const pose3Settings = getObjectPoseSettings(level, "3");
+        settings = interpolateLayerSettings(
+            pose3Settings,
+            getObjectPoseSettings(level, "4"),
+            devDemoPose3LiftProgress
+        );
+        settings.y = pose3Settings.y + getDevPose3LiftY();
+    }
+
+    const objectOverHero = ["3", "4"].includes(pose) && !isFishLevel(level);
+    return {
+        ...settings,
+        zIndex: objectOverHero ? Math.max(settings.zIndex ?? 30, 60) : settings.zIndex,
+    };
+}
+
+function isFishLevel(level) {
+    return level?.src?.includes("fish") || /рыба/i.test(level?.title || "");
+}
+
 function startDevFloat() {
     stopDevFloat();
     if (!GAME_CONFIG.devFloat.enabled || devDemoState !== "complete") return;
@@ -1365,31 +1628,39 @@ function startDevFloat() {
     const level = currentDevLevel();
     const pose = "4";
     const poseSettings = GAME_CONFIG.poses[pose];
-    const objectSettings = getObjectPoseSettings(level, pose);
+    const objectSettings = getDevObjectLayerSettings(level, pose);
+    const shadowSettings = getShadowPoseSettings(level, pose);
     const animationId = devFloatAnimationId;
     const startedAt = performance.now();
 
     function tick(now) {
         if (animationId !== devFloatAnimationId || devDemoState !== "complete") return;
 
-        const wave = Math.sin(((now - startedAt) / 1000) * GAME_CONFIG.devFloat.speed * Math.PI * 2);
-        const offset = wave * GAME_CONFIG.devFloat.distance;
+        const phase = ((now - startedAt) / 1000) * GAME_CONFIG.devFloat.speed * Math.PI * 2;
+        const liftProgress = (1 - Math.cos(phase)) / 2;
+        const liftOffset = liftProgress * GAME_CONFIG.devFloat.distance;
+        const shadowExpand = (1 - liftProgress) * (GAME_CONFIG.devFloat.shadowSpread / 100);
 
         applyImageTransform(devBodyImg, {
             ...poseSettings.body,
-            y: poseSettings.body.y + offset,
+            y: poseSettings.body.y - liftOffset,
         });
 
         if (poseSettings.head) {
             applyImageTransform(devHeadImg, {
                 ...poseSettings.head,
-                y: poseSettings.head.y + offset,
+                y: poseSettings.head.y - liftOffset,
             });
         }
 
         applyImageTransform(devObjectImg, {
             ...objectSettings,
-            y: objectSettings.y + offset,
+            y: objectSettings.y - liftOffset,
+        });
+
+        applyDevShadowSettings({
+            ...shadowSettings,
+            scaleX: (shadowSettings.scaleX ?? 1) * (1 + shadowExpand),
         });
 
         devFloatFrameId = requestAnimationFrame(tick);
@@ -1411,6 +1682,11 @@ function stopDevDemoTimer() {
     devDemoTimerId = null;
 }
 
+function stopDevDemoPoseTimer() {
+    if (devDemoPoseTimerId) clearTimeout(devDemoPoseTimerId);
+    devDemoPoseTimerId = null;
+}
+
 function devDemoHeadIndexByTime() {
     const elapsed = Math.max(0, performance.now() - devDemoStartedAt);
     const progress = Math.max(0, Math.min(1, elapsed / GAME_CONFIG.levelTimeMs));
@@ -1423,10 +1699,11 @@ function updateDevDemoHeadByTime() {
     if (devDemoState !== "running") return;
     const pose = devDemoLiftPose || "0.5";
     const poseSettings = GAME_CONFIG.poses[pose];
+    const visualSettings = getDevHeroLayerSettings(pose);
     if (!poseSettings?.head) return;
     setImageSrc(devHeadImg, GAME_CONFIG.heads[devDemoHeadIndexByTime()] || GAME_CONFIG.heads[2]);
     if (!shouldShakeDevPose(pose)) {
-        applyImageTransform(devHeadImg, poseSettings.head);
+        applyImageTransform(devHeadImg, visualSettings.head);
     }
 }
 
@@ -1449,15 +1726,20 @@ function startDevDemoTimer() {
 
 function startDevDemo() {
     stopDevDemoTimer();
+    stopDevDemoPoseTimer();
     stopDevShake();
     stopDevFloat();
+    updateDevDemoSettingsFromInputs();
     updateDevShakeSettingsFromInputs();
     updateDevFloatSettingsFromInputs();
+    updateDevPoseComboSettingsFromInputs();
     const level = currentDevLevel();
+    const tapGoal = getDevDemoTapGoal(level);
     setDevStageResult(null);
     devDemoState = "intro";
     devDemoTaps = 0;
     devDemoLiftPose = "0.5";
+    devDemoPose3LiftProgress = 0;
     renderDevDemoMode("Демо запущено: предмет падает, затем кнопка станет активной.");
     setDevDemoButton("Падение", false, false);
     playDevIntroAnimation({
@@ -1468,16 +1750,17 @@ function startDevDemo() {
             devDemoState = "running";
             devDemoTaps = 0;
             devDemoLiftPose = "0.5";
+            devDemoPose3LiftProgress = 0;
             updateDevVignette(devVignetteProgressForPose("0.5"));
             applyDevHeroPose("0.5", 2);
             applyDevObjectPose(level, "0.5");
-            setDevDemoButton(`Тапай 0/${level.tapsRequired}`, true, true);
+            setDevDemoButton(`Тапай 0/${tapGoal}`, true, true);
             startDevDemoTimer();
             devValuesEl.textContent = [
                 "mode: демо уровня",
                 `level: ${Number(devLevelSelect.value) + 1} ${level.title}`,
                 "state: running",
-                `taps: 0/${level.tapsRequired}`,
+                `taps: 0/${tapGoal}`,
                 "pose: 0.5",
                 "Черная виньетка будет уходить к краям и слабеть по мере тапов.",
             ].join("\n");
@@ -1488,11 +1771,13 @@ function startDevDemo() {
 function resetDevDemo() {
     activeDevIntroAnimationId += 1;
     stopDevDemoTimer();
+    stopDevDemoPoseTimer();
     stopDevShake();
     stopDevFloat();
     devDemoState = "idle";
     devDemoTaps = 0;
     devDemoLiftPose = null;
+    devDemoPose3LiftProgress = 0;
     resetDevCamera();
     setDevStageResult(null);
     updateDevVignette(1);
@@ -1532,7 +1817,7 @@ function handleDevDemoAction(action) {
         updateDevFloatSettingsFromInputs();
         GAME_CONFIG.devFloat.enabled = true;
         startDevFloat();
-        devValuesEl.textContent = `${devValuesEl.textContent}\n\nПарение включено: ${GAME_CONFIG.devFloat.distance}px, speed ${GAME_CONFIG.devFloat.speed}.`;
+        devValuesEl.textContent = `${devValuesEl.textContent}\n\nПарение включено: ${GAME_CONFIG.devFloat.distance}px, speed ${GAME_CONFIG.devFloat.speed}, shadow ${GAME_CONFIG.devFloat.shadowSpread}%.`;
         return;
     }
 
@@ -1545,7 +1830,66 @@ function handleDevDemoAction(action) {
             applyDevObjectPose(level, "4");
         }
         devValuesEl.textContent = `${devValuesEl.textContent}\n\nПарение выключено.`;
+        return;
     }
+
+    if (action === "pose23-on") {
+        updateDevPoseComboSettingsFromInputs();
+        GAME_CONFIG.devPoseCombo.enabled = true;
+        stopDevDemoPoseTimer();
+        scheduleDevPose3();
+        devValuesEl.textContent = `${devValuesEl.textContent}\n\nАвтопереход 2->3 включен: ${GAME_CONFIG.devPoseCombo.pose2To3Ms}мс.`;
+        return;
+    }
+
+    if (action === "pose23-off") {
+        GAME_CONFIG.devPoseCombo.enabled = false;
+        stopDevDemoPoseTimer();
+        devValuesEl.textContent = `${devValuesEl.textContent}\n\nАвтопереход 2->3 выключен.`;
+    }
+}
+
+function setDevDemoPose(pose) {
+    const level = currentDevLevel();
+    if (pose === devDemoLiftPose) return;
+
+    devDemoLiftPose = pose;
+    devDemoPose3LiftProgress = 0;
+    stopDevShake();
+    updateDevVignette(devVignetteProgressForPose(pose));
+    applyDevHeroPose(pose, devDemoHeadIndexByTime());
+    applyDevObjectPose(level, pose);
+    startDevShake();
+    animateDevCameraTo(devCameraScaleForPose(pose), 180);
+}
+
+function scheduleDevPose3() {
+    if (!GAME_CONFIG.devPoseCombo.enabled || devDemoLiftPose !== "2") return;
+    if (devDemoPoseTimerId) return;
+
+    devDemoPoseTimerId = setTimeout(() => {
+        devDemoPoseTimerId = null;
+        if (devDemoState !== "running" || devDemoLiftPose !== "2") return;
+        setDevDemoPose("3");
+    }, GAME_CONFIG.devPoseCombo.pose2To3Ms);
+}
+
+function devPose3LiftProgressFromLevelProgress(progress) {
+    const start = GAME_CONFIG.devPoseCombo.enabled
+        ? 2 / 3
+        : GAME_CONFIG.liftPoses.indexOf("3") / GAME_CONFIG.liftPoses.length;
+    return Math.max(0, Math.min(1, (progress - start) / Math.max(0.01, 1 - start)));
+}
+
+function applyDevPose3TapLift(progress) {
+    devDemoPose3LiftProgress = devPose3LiftProgressFromLevelProgress(progress);
+    if (devDemoLiftPose !== "3") return;
+
+    const level = currentDevLevel();
+    stopDevShake();
+    applyDevHeroPose("3", devDemoHeadIndexByTime());
+    applyDevObjectPose(level, "3");
+    startDevShake();
 }
 
 function handleDevDemoTap() {
@@ -1558,38 +1902,42 @@ function handleDevDemoTap() {
 
     devDemoTapBtn.blur();
     const level = currentDevLevel();
+    const tapGoal = getDevDemoTapGoal(level);
     devDemoTaps += 1;
-    const progress = Math.min(1, devDemoTaps / level.tapsRequired);
+    const progress = Math.min(1, devDemoTaps / tapGoal);
     pulseDevVignette();
+    devDemoPose3LiftProgress = devPose3LiftProgressFromLevelProgress(progress);
 
-    const poses = GAME_CONFIG.liftPoses;
+    const poses = GAME_CONFIG.devPoseCombo.enabled ? ["0.5", "1", "2"] : GAME_CONFIG.liftPoses;
     const poseIndex = Math.min(poses.length - 1, Math.floor(progress * poses.length));
-    const pose = poses[poseIndex];
+    let pose = poses[poseIndex];
 
-    if (pose !== devDemoLiftPose) {
-        devDemoLiftPose = pose;
-        stopDevShake();
-        updateDevVignette(devVignetteProgressForPose(pose));
-        applyDevHeroPose(pose, devDemoHeadIndexByTime());
-        applyDevObjectPose(level, pose);
-        startDevShake();
-        animateDevCameraTo(devCameraScaleForPose(pose), 180);
-    } else {
-        updateDevDemoHeadByTime();
+    if (GAME_CONFIG.devPoseCombo.enabled && devDemoLiftPose === "3" && pose === "2") {
+        pose = "3";
     }
 
-    setDevDemoButton(`Тапай ${devDemoTaps}/${level.tapsRequired}`, true, true);
+    if (pose !== devDemoLiftPose) {
+        setDevDemoPose(pose);
+        scheduleDevPose3();
+    } else {
+        applyDevPose3TapLift(progress);
+        updateDevDemoHeadByTime();
+        scheduleDevPose3();
+    }
+
+    setDevDemoButton(`Тапай ${devDemoTaps}/${tapGoal}`, true, true);
     devValuesEl.textContent = [
         "mode: демо уровня",
         `level: ${Number(devLevelSelect.value) + 1} ${level.title}`,
         "state: running",
-        `taps: ${devDemoTaps}/${level.tapsRequired}`,
+        `taps: ${devDemoTaps}/${tapGoal}`,
         `pose: ${devDemoLiftPose}`,
         `vignettePose: ${devDemoLiftPose}`,
     ].join("\n");
 
     if (progress >= 1) {
         stopDevDemoTimer();
+        stopDevDemoPoseTimer();
         stopDevShake();
         stopDevFloat();
         devDemoState = "complete";
@@ -1604,7 +1952,7 @@ function handleDevDemoTap() {
             "mode: демо уровня",
             `level: ${Number(devLevelSelect.value) + 1} ${level.title}`,
             "state: complete",
-            `taps: ${devDemoTaps}/${level.tapsRequired}`,
+            `taps: ${devDemoTaps}/${tapGoal}`,
             "pose: 4",
             "Один уровень демо завершен победой.",
         ].join("\n");
@@ -1615,7 +1963,9 @@ function failDevDemo() {
     if (devDemoState !== "running") return;
 
     const level = currentDevLevel();
+    const tapGoal = getDevDemoTapGoal(level);
     stopDevDemoTimer();
+    stopDevDemoPoseTimer();
     stopDevShake();
     stopDevFloat();
     devDemoState = "failed";
@@ -1629,7 +1979,7 @@ function failDevDemo() {
         "mode: демо уровня",
         `level: ${Number(devLevelSelect.value) + 1} ${level.title}`,
         "state: failed",
-        `taps: ${devDemoTaps}/${level.tapsRequired}`,
+        `taps: ${devDemoTaps}/${tapGoal}`,
         "pose: dead",
         "Время вышло: показана поза смерти и красная виньетка.",
     ].join("\n");
@@ -1644,20 +1994,28 @@ function adjustDevTarget(action) {
     const target = devTargetSelect.value;
     const level = currentDevLevel();
 
-    if (action === "up") settings.y -= step;
-    if (action === "down") settings.y += step;
-    if (action === "left") settings.x -= step;
-    if (action === "right") settings.x += step;
-    if (action === "rotate-left") settings.rotation = (settings.rotation || 0) - rotationStep;
-    if (action === "rotate-right") settings.rotation = (settings.rotation || 0) + rotationStep;
+    if (action === "up" && "y" in settings) settings.y -= step;
+    if (action === "down" && "y" in settings) settings.y += step;
+    if (action === "left" && "x" in settings) settings.x -= step;
+    if (action === "right" && "x" in settings) settings.x += step;
+    if (action === "rotate-left" && target !== "heroShade") settings.rotation = (settings.rotation || 0) - rotationStep;
+    if (action === "rotate-right" && target !== "heroShade") settings.rotation = (settings.rotation || 0) + rotationStep;
+    if (action === "narrower" && target === "shadow") settings.scaleX = Math.max(0.05, (settings.scaleX ?? 1) - step / 50);
+    if (action === "wider" && target === "shadow") settings.scaleX = (settings.scaleX ?? 1) + step / 50;
+    if (action === "shorter" && target === "shadow") settings.scaleY = Math.max(0.05, (settings.scaleY ?? 1) - step / 50);
+    if (action === "taller" && target === "shadow") settings.scaleY = (settings.scaleY ?? 1) + step / 50;
+    if (action === "shade-lighter" && target === "heroShade") settings.opacity = Math.max(0, (settings.opacity || 0) - step / 100);
+    if (action === "shade-darker" && target === "heroShade") settings.opacity = Math.min(0.85, (settings.opacity || 0) + step / 100);
     if (action === "smaller") {
         if (target === "object") level.object.width = Math.max(5, level.object.width - step);
         else if (target === "background") settings.width = Math.max(20, (settings.width || GAME_CONFIG.stage.width) - step);
+        else if (target === "heroShade") settings.opacity = Math.max(0, (settings.opacity || 0) - step / 100);
         else settings.width = Math.max(5, settings.width - step);
     }
     if (action === "bigger") {
         if (target === "object") level.object.width += step;
         else if (target === "background") settings.width = (settings.width || GAME_CONFIG.stage.width) + step;
+        else if (target === "heroShade") settings.opacity = Math.min(0.85, (settings.opacity || 0) + step / 100);
         else settings.width += step;
     }
 
